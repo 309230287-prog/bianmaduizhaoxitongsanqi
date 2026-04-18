@@ -1,0 +1,53 @@
+{
+  "name": "product-matcher-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "author": "309230287-prog",
+  "description": "???????? Windows ????",
+  "main": "main.js",
+  "scripts": {
+    "dev": "electron .",
+    "build": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.weis.productmatcher",
+    "productName": "????????",
+    "executableName": "product-matcher-desktop",
+    "artifactName": "product-matcher-desktop-setup-${version}.${ext}",
+    "directories": {
+      "output": "../dist/windows-client"
+    },
+    "files": [
+      "main.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../build/desktop/backend/product-matcher-server.exe",
+        "to": "backend/product-matcher-server.exe"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": false,
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^37.4.0",
+    "electron-builder": "^26.0.12"
+  }
+}

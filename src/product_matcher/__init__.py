@@ -1,0 +1,1 @@
+"""Product matcher application package."""

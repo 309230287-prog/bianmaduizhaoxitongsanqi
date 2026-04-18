@@ -1,0 +1,27 @@
+.worktrees/
+worktrees/
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+runtime_data/
+build/
+dist/
+*.egg-info/
+
+desktop-shell/node_modules/
+desktop-shell/dist/
+desktop-shell/build/
+
+# Real source workbooks are local business data. Keep validation samples under samples/phase2 tracked.
+客户商品库.xlsx
+我司商品库.xlsx
+
+*.log
+*.tmp
+~$*.xlsx
