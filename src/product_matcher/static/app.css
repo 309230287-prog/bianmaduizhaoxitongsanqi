@@ -208,6 +208,10 @@ button.secondary {
   border-color: rgba(75, 99, 63, 0.32);
   background: linear-gradient(135deg, rgba(250, 255, 243, 0.94), rgba(255, 250, 242, 0.92));
 }
+.phase2-diagnostics-card {
+  border-color: rgba(89, 93, 133, 0.24);
+  background: linear-gradient(135deg, rgba(244, 247, 255, 0.96), rgba(255, 250, 242, 0.94));
+}
 .phase2-form {
   display: grid;
   grid-template-columns: minmax(220px, 320px) auto;
@@ -219,6 +223,9 @@ button.secondary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
+  margin-top: 16px;
+}
+.diagnostics-summary {
   margin-top: 16px;
 }
 .model-picker {

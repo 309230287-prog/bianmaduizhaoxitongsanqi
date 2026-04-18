@@ -56,6 +56,7 @@ from product_matcher_phase2.model_trial_runner import build_chat_json_model_call
 
 BASE_DIR = Path(__file__).resolve().parent
 PHASE2_TRIAL_INPUT_FILE = PROJECT_ROOT / "samples" / "phase2" / "model_trial_inputs_v0.1.jsonl"
+PHASE2_TRIAL_DIAGNOSTICS_FILE = PROJECT_ROOT / "samples" / "phase2" / "model_trial_diagnostics_deepseek_v0.1.md"
 
 app = FastAPI(
     title="商品智能匹配系统 MVP",
@@ -621,6 +622,7 @@ def _build_context(**overrides):
         "match_engine_fallback": None,
         "export_job": None,
         "phase2_trial_input_path": str(PHASE2_TRIAL_INPUT_FILE),
+        "phase2_trial_diagnostics": _load_phase2_trial_diagnostics_summary(),
         "phase2_trial_job": None,
         "phase2_trial_message": None,
     }
@@ -651,6 +653,45 @@ def _load_model_settings_summary() -> tuple[dict, str | None]:
     except model_settings_service.ModelSettingsError as exc:
         fallback = model_settings_service.recommended_model_settings()
         return model_settings_service.describe_model_settings(fallback), str(exc)
+
+
+def _load_phase2_trial_diagnostics_summary() -> dict:
+    summary = {
+        "available": False,
+        "title": "最近二期诊断",
+        "source_path": str(PHASE2_TRIAL_DIAGNOSTICS_FILE),
+        "source_label": PHASE2_TRIAL_DIAGNOSTICS_FILE.name,
+        "total_count": None,
+        "schema_validation_error": None,
+        "model_call_error": None,
+        "note": "该报告说明模型试跑未通过，不代表模型验证成功。",
+    }
+    if not PHASE2_TRIAL_DIAGNOSTICS_FILE.exists():
+        return summary
+
+    try:
+        text = PHASE2_TRIAL_DIAGNOSTICS_FILE.read_text(encoding="utf-8")
+    except OSError:
+        return summary
+
+    summary["available"] = True
+    summary["total_count"] = _extract_markdown_int(text, "- Total rows: ")
+    summary["schema_validation_error"] = _extract_markdown_int(text, "- `schema_validation_error`: ")
+    summary["model_call_error"] = _extract_markdown_int(text, "- `model_call_error`: ")
+    return summary
+
+
+def _extract_markdown_int(text: str, prefix: str) -> int | None:
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line.startswith(prefix):
+            continue
+        value = line[len(prefix) :].strip()
+        try:
+            return int(value)
+        except ValueError:
+            return None
+    return None
 
 
 def _build_settings_preview(form, existing_settings: dict) -> dict:

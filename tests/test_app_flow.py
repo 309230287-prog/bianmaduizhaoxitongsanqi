@@ -102,6 +102,31 @@ class AppFlowTests(unittest.TestCase):
                 self.assertEqual(test_response.status_code, 200)
                 self.assertIn("模型连接测试通过。", test_response.text)
 
+    def test_home_shows_recent_phase2_diagnostics_summary(self) -> None:
+        client = TestClient(app)
+
+        response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("最近二期诊断", response.text)
+        self.assertIn("schema_validation_error", response.text)
+        self.assertIn("9", response.text)
+        self.assertIn("model_call_error", response.text)
+        self.assertIn("1", response.text)
+        self.assertIn("该报告说明模型试跑未通过，不代表模型验证成功。", response.text)
+
+    def test_home_shows_placeholder_when_phase2_diagnostics_report_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            missing_report = Path(tmp_dir) / "missing.md"
+            client = TestClient(app)
+
+            with patch.object(app_module, "PHASE2_TRIAL_DIAGNOSTICS_FILE", missing_report):
+                response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("最近二期诊断", response.text)
+        self.assertIn("暂无诊断报告", response.text)
+
     def test_home_can_save_openai_compatible_model_selection(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)

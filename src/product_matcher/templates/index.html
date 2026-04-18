@@ -169,6 +169,40 @@
       {% endif %}
     </section>
 
+    <section class="card phase2-diagnostics-card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Recent Diagnostics</p>
+          <h2>{{ phase2_trial_diagnostics.title }}</h2>
+        </div>
+        <span class="model-pill">只读摘要</span>
+      </div>
+      <p class="muted">这块只展示最近一次二期诊断摘要，不会混入一期 /match 结果，也不会重新调用模型。</p>
+      <p class="muted">{{ phase2_trial_diagnostics.note }}</p>
+      {% if phase2_trial_diagnostics.available %}
+      <div class="settings-summary diagnostics-summary">
+        <div class="summary-chip">
+          <span>报告来源</span>
+          <strong>{{ phase2_trial_diagnostics.source_label }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>总样本数</span>
+          <strong>{{ phase2_trial_diagnostics.total_count }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>schema_validation_error</span>
+          <strong>{{ phase2_trial_diagnostics.schema_validation_error }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>model_call_error</span>
+          <strong>{{ phase2_trial_diagnostics.model_call_error }}</strong>
+        </div>
+      </div>
+      {% else %}
+      <div class="alert info">暂无诊断报告</div>
+      {% endif %}
+    </section>
+
     {% if phase2_trial_job %}
     <section class="card" id="phase2-trial-job-card" data-phase2-job-id="{{ phase2_trial_job.job_id }}">
       <h2>二期语义试跑任务</h2>
