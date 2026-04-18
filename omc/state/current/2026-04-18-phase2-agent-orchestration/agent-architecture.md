@@ -11,7 +11,7 @@
 1. 二期语义链路必须保持独立，不得把一期匹配逻辑包装成二期判断。
 2. 每个文件只能有一个明确 owner，禁止跨 agent 同时写同一文件。
 3. 任何“通过”“成熟”“已验证”都必须先有 fresh 命令输出或可追溯证据。
-4. 本阶段只做治理、边界、验证与任务规则，不改 `src/`、`tests/`、`samples/`、`scripts/`。
+4. 治理类 agent 本次只做治理、边界、验证与任务规则，不改 `src/`、`tests/`、`samples/`、`scripts/`。
 5. 任何改动都要能回指到需求文档、路书和技术执行规格。
 
 ## Agent 角色
@@ -113,7 +113,7 @@
 ### 共享边界
 
 - `docs/requirements/`、`docs/route-map/`、`docs/planning/`：只读参考
-- `src/`、`tests/`、`samples/`、`scripts/`：本次禁止修改
+- `src/`、`tests/`、`samples/`、`scripts/`：治理类 agent 本次禁止修改；实现/诊断 agent 只能按总管分配的文件所有权修改
 - `omc/memory/project-state.md`：只读参考，不回写
 
 ## 合并顺序
