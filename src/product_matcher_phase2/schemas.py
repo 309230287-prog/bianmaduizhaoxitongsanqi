@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextvars import ContextVar
 from enum import Enum
 
 from pydantic import BaseModel, Field, model_validator
@@ -26,6 +27,71 @@ class RiskFlag(str, Enum):
     MULTIPLE_VALID_CANDIDATES = "multiple_valid_candidates"
     INSUFFICIENT_CUSTOMER_INFO = "insufficient_customer_info"
     CANDIDATE_POOL_MISSING_EVIDENCE = "candidate_pool_missing_evidence"
+
+
+_NORMALIZE_RISK_FLAGS = ContextVar("phase2_normalize_risk_flags", default=True)
+
+
+RISK_FLAG_ALIASES: dict[str, RiskFlag] = {
+    "brand_mismatch": RiskFlag.BRAND_CONFLICT,
+    "品牌冲突": RiskFlag.BRAND_CONFLICT,
+    "spec_mismatch": RiskFlag.SPEC_CONFLICT,
+    "规格冲突": RiskFlag.SPEC_CONFLICT,
+    "package_mismatch": RiskFlag.PACKAGE_CONFLICT,
+    "包装冲突": RiskFlag.PACKAGE_CONFLICT,
+    "unit_mismatch": RiskFlag.UNIT_CONFLICT,
+    "单位冲突": RiskFlag.UNIT_CONFLICT,
+    "multiple_candidates": RiskFlag.MULTIPLE_VALID_CANDIDATES,
+    "多个候选": RiskFlag.MULTIPLE_VALID_CANDIDATES,
+    "insufficient_info": RiskFlag.INSUFFICIENT_CUSTOMER_INFO,
+    "信息不足": RiskFlag.INSUFFICIENT_CUSTOMER_INFO,
+}
+
+
+def _normalize_risk_flag_value(value: object) -> object:
+    if isinstance(value, RiskFlag):
+        return value
+    if isinstance(value, str):
+        cleaned = value.strip()
+        if cleaned in RISK_FLAG_ALIASES:
+            return RISK_FLAG_ALIASES[cleaned]
+        try:
+            return RiskFlag(cleaned)
+        except ValueError:
+            return value
+    return value
+
+
+def normalize_risk_flags_in_payload(payload: object) -> object:
+    if not isinstance(payload, dict):
+        return payload
+
+    normalized_payload = dict(payload)
+
+    risk_flags = normalized_payload.get("risk_flags")
+    if isinstance(risk_flags, list):
+        normalized_payload["risk_flags"] = [_normalize_risk_flag_value(value) for value in risk_flags]
+
+    return normalized_payload
+
+
+def normalize_candidate_assessment_payload(payload: object) -> object:
+    return normalize_risk_flags_in_payload(payload)
+
+
+def normalize_model_decision_payload(payload: object) -> object:
+    if not isinstance(payload, dict):
+        return payload
+
+    normalized_payload = normalize_risk_flags_in_payload(payload)
+
+    candidate_assessments = normalized_payload.get("candidate_assessments")
+    if isinstance(candidate_assessments, list):
+        normalized_payload["candidate_assessments"] = [
+            normalize_candidate_assessment_payload(assessment) for assessment in candidate_assessments
+        ]
+
+    return normalized_payload
 
 
 HARD_CONFLICT_RISKS = {
@@ -75,6 +141,25 @@ class CandidateAssessment(BaseModel):
     risk_flags: list[RiskFlag] = Field(default_factory=list)
     summary: str = ""
 
+    def __init__(self, /, **data: object) -> None:
+        normalized_data = normalize_candidate_assessment_payload(data) if _NORMALIZE_RISK_FLAGS.get() else data
+        super().__init__(**normalized_data)
+
+    @classmethod
+    def model_validate(
+        cls,
+        obj: object,
+        *,
+        strict: bool | None = None,
+        from_attributes: bool | None = None,
+        context: dict[str, object] | None = None,
+    ) -> "CandidateAssessment":
+        token = _NORMALIZE_RISK_FLAGS.set(False)
+        try:
+            return super().model_validate(obj, strict=strict, from_attributes=from_attributes, context=context)
+        finally:
+            _NORMALIZE_RISK_FLAGS.reset(token)
+
 
 class ModelDecision(BaseModel):
     customer_semantic_summary: str
@@ -90,6 +175,25 @@ class ModelDecision(BaseModel):
     evidence_summary: str = ""
     manual_review_reason: str = ""
     can_auto_code: bool = False
+
+    def __init__(self, /, **data: object) -> None:
+        normalized_data = normalize_model_decision_payload(data) if _NORMALIZE_RISK_FLAGS.get() else data
+        super().__init__(**normalized_data)
+
+    @classmethod
+    def model_validate(
+        cls,
+        obj: object,
+        *,
+        strict: bool | None = None,
+        from_attributes: bool | None = None,
+        context: dict[str, object] | None = None,
+    ) -> "ModelDecision":
+        token = _NORMALIZE_RISK_FLAGS.set(False)
+        try:
+            return super().model_validate(obj, strict=strict, from_attributes=from_attributes, context=context)
+        finally:
+            _NORMALIZE_RISK_FLAGS.reset(token)
 
     def _selected_assessment(self) -> CandidateAssessment | None:
         if not self.selected_candidate_id:

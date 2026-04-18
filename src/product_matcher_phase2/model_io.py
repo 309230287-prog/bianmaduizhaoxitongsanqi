@@ -6,7 +6,13 @@ from typing import Any, Iterable
 from pydantic import BaseModel, ValidationError
 
 from product_matcher_phase2.memory import ProductMemoryItem
-from product_matcher_phase2.schemas import CandidateItem, CustomerRecord, ModelDecision, ResultStatus
+from product_matcher_phase2.schemas import (
+    CandidateItem,
+    CustomerRecord,
+    ModelDecision,
+    ResultStatus,
+    normalize_model_decision_payload,
+)
 
 
 JUDGEMENT_RULES = [
@@ -16,6 +22,21 @@ JUDGEMENT_RULES = [
     "规格、单位、包装层级、品牌、系列或等级存在冲突时，不能强自动落码。",
     "证据不够唯一时输出人工审核，允许给出建议候选，但不能自动落码。",
     "记忆只能作为证据参考，不能覆盖当前客户行和候选商品的直接证据。",
+    "risk_flags 只能输出下列 RiskFlag 枚举值：core_name_uncertain, brand_conflict, spec_conflict, package_conflict, unit_conflict, series_or_grade_conflict, remark_changes_identity, needs_unstated_assumption, multiple_valid_candidates, insufficient_customer_info, candidate_pool_missing_evidence。",
+]
+
+ALLOWED_RISK_FLAGS = [
+    "core_name_uncertain",
+    "brand_conflict",
+    "spec_conflict",
+    "package_conflict",
+    "unit_conflict",
+    "series_or_grade_conflict",
+    "remark_changes_identity",
+    "needs_unstated_assumption",
+    "multiple_valid_candidates",
+    "insufficient_customer_info",
+    "candidate_pool_missing_evidence",
 ]
 
 REQUIRED_OUTPUT_FORMAT = {
@@ -32,13 +53,13 @@ REQUIRED_OUTPUT_FORMAT = {
             "matched_evidence": ["string"],
             "conflicts": ["string"],
             "missing_evidence": ["string"],
-            "risk_flags": ["string"],
+            "risk_flags": list(ALLOWED_RISK_FLAGS),
             "summary": "string",
         }
     ],
     "selected_candidate_id": "string | null",
     "result_status": "strong_auto_code | weak_auto_code | suggested_code | manual_review | unmatched | model_error",
-    "risk_flags": ["string"],
+    "risk_flags": list(ALLOWED_RISK_FLAGS),
     "evidence_summary": "string",
     "manual_review_reason": "string",
     "can_auto_code": "boolean",
@@ -103,6 +124,6 @@ def parse_model_decision_response(response_text: str) -> ModelDecision:
         return _model_error("模型返回无法解析为 JSON。", str(exc))
 
     try:
-        return ModelDecision.model_validate(payload)
+        return ModelDecision.model_validate(normalize_model_decision_payload(payload))
     except ValidationError as exc:
         return _model_error("模型返回格式或规则校验失败。", str(exc))

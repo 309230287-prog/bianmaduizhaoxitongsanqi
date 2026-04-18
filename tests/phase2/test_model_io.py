@@ -99,6 +99,18 @@ class ModelInputPayloadTests(unittest.TestCase):
         self.assertIn("规格", rules)
         self.assertIn("人工审核", rules)
 
+    def test_payload_mentions_allowed_risk_flag_enum_values(self) -> None:
+        payload = build_model_input_payload(
+            record=self._record(),
+            candidates=[self._candidate()],
+            applicable_memories=[],
+        )
+
+        required_output_format = payload["required_output_format"]
+        self.assertIn("brand_conflict", required_output_format["candidate_assessments"][0]["risk_flags"])
+        self.assertIn("multiple_valid_candidates", required_output_format["risk_flags"])
+        self.assertIn("insufficient_customer_info", required_output_format["risk_flags"])
+
     def test_rendered_prompt_keeps_chinese_readable_and_requires_json(self) -> None:
         payload = build_model_input_payload(
             record=self._record(),
@@ -112,6 +124,8 @@ class ModelInputPayloadTests(unittest.TestCase):
         self.assertIn("海天金标生抽", prompt)
         self.assertIn('"record_id": "C000001"', prompt)
         self.assertIn('"candidate_products"', prompt)
+        self.assertIn("brand_conflict", prompt)
+        self.assertIn("insufficient_customer_info", prompt)
 
     def test_parse_valid_model_json_response(self) -> None:
         response_text = """
@@ -146,6 +160,52 @@ class ModelInputPayloadTests(unittest.TestCase):
 
         self.assertEqual(decision.result_status.value, "strong_auto_code")
         self.assertTrue(decision.can_auto_code)
+
+    def test_parse_model_json_response_normalizes_common_risk_flag_aliases(self) -> None:
+        response_text = """
+        {
+          "customer_semantic_summary": "客户信息不足。",
+          "key_identity_signals": ["信息不足"],
+          "strong_constraints": [],
+          "weak_constraints": [],
+          "ignored_or_noise_signals": [],
+          "missing_or_uncertain_signals": ["品牌", "规格"],
+          "candidate_assessments": [
+            {
+              "candidate_id": "K000001",
+              "same_business_identity": false,
+              "matched_evidence": [],
+              "conflicts": [],
+              "missing_evidence": [],
+              "risk_flags": ["brand_mismatch", "品牌冲突", "multiple_candidates"],
+              "summary": "候选存在品牌冲突。"
+            }
+          ],
+          "selected_candidate_id": null,
+          "result_status": "manual_review",
+          "risk_flags": ["package_mismatch", "unit_mismatch", "包装冲突", "单位冲突", "insufficient_info"],
+          "evidence_summary": "需要人工确认。",
+          "manual_review_reason": "信息不足。",
+          "can_auto_code": false
+        }
+        """
+
+        decision = parse_model_decision_response(response_text)
+
+        self.assertEqual(
+            [flag.value for flag in decision.risk_flags],
+            [
+                "package_conflict",
+                "unit_conflict",
+                "package_conflict",
+                "unit_conflict",
+                "insufficient_customer_info",
+            ],
+        )
+        self.assertEqual(
+            [flag.value for flag in decision.candidate_assessments[0].risk_flags],
+            ["brand_conflict", "brand_conflict", "multiple_valid_candidates"],
+        )
 
     def test_parse_invalid_json_as_model_error_without_auto_code(self) -> None:
         decision = parse_model_decision_response("不是 JSON")

@@ -108,6 +108,93 @@ class Phase2SchemaTests(unittest.TestCase):
                 can_auto_code=True,
             )
 
+    def test_model_decision_normalizes_common_risk_flag_aliases(self) -> None:
+        decision = ModelDecision(
+            customer_semantic_summary="客户表达信息不足，候选存在多个可能。",
+            key_identity_signals=["信息不足"],
+            strong_constraints=[],
+            weak_constraints=[],
+            ignored_or_noise_signals=[],
+            missing_or_uncertain_signals=["品牌", "规格"],
+            candidate_assessments=[
+                CandidateAssessment(
+                    candidate_id="K001",
+                    same_business_identity=False,
+                    matched_evidence=[],
+                    conflicts=[],
+                    missing_evidence=[],
+                    risk_flags=["brand_mismatch", "品牌冲突", "spec_mismatch", "多个候选"],
+                    summary="候选存在品牌和规格冲突。",
+                )
+            ],
+            selected_candidate_id=None,
+            result_status=ResultStatus.MANUAL_REVIEW,
+            risk_flags=[
+                "package_mismatch",
+                "unit_mismatch",
+                "multiple_candidates",
+                "insufficient_info",
+                "包装冲突",
+                "单位冲突",
+                "多个候选",
+                "信息不足",
+            ],
+            evidence_summary="需要人工确认。",
+            manual_review_reason="信息不足。",
+            can_auto_code=False,
+        )
+
+        self.assertEqual(
+            decision.risk_flags,
+            [
+                RiskFlag.PACKAGE_CONFLICT,
+                RiskFlag.UNIT_CONFLICT,
+                RiskFlag.MULTIPLE_VALID_CANDIDATES,
+                RiskFlag.INSUFFICIENT_CUSTOMER_INFO,
+                RiskFlag.PACKAGE_CONFLICT,
+                RiskFlag.UNIT_CONFLICT,
+                RiskFlag.MULTIPLE_VALID_CANDIDATES,
+                RiskFlag.INSUFFICIENT_CUSTOMER_INFO,
+            ],
+        )
+        self.assertEqual(
+            decision.candidate_assessments[0].risk_flags,
+            [
+                RiskFlag.BRAND_CONFLICT,
+                RiskFlag.BRAND_CONFLICT,
+                RiskFlag.SPEC_CONFLICT,
+                RiskFlag.MULTIPLE_VALID_CANDIDATES,
+            ],
+        )
+
+    def test_model_decision_rejects_unknown_risk_flag_aliases(self) -> None:
+        with self.assertRaises(ValidationError):
+            ModelDecision(
+                customer_semantic_summary="未知风险标记。",
+                key_identity_signals=[],
+                strong_constraints=[],
+                weak_constraints=[],
+                ignored_or_noise_signals=[],
+                missing_or_uncertain_signals=[],
+                candidate_assessments=[
+                    CandidateAssessment(
+                        candidate_id="K001",
+                        same_business_identity=False,
+                        matched_evidence=[],
+                        conflicts=[],
+                        missing_evidence=[],
+                        risk_flags=["not_a_real_flag"],
+                        summary="未知风险。",
+                    )
+                ],
+                selected_candidate_id=None,
+                result_status=ResultStatus.MANUAL_REVIEW,
+                risk_flags=[],
+                evidence_summary="。",
+                manual_review_reason="未知。",
+                can_auto_code=False,
+            )
+
     def test_model_decision_rejects_strong_auto_without_selected_candidate_assessment(self) -> None:
         with self.assertRaises(ValidationError):
             ModelDecision(
