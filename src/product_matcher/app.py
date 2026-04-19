@@ -668,6 +668,11 @@ def _load_phase2_trial_diagnostics_summary() -> dict:
         "status_match_count": None,
         "selected_code_mismatch_count": None,
         "unsafe_auto_code_count": None,
+        "current_parser_valid_count": None,
+        "current_status_match_count": None,
+        "current_selected_code_match_count": None,
+        "current_selected_code_mismatch_count": None,
+        "current_unsafe_auto_code_count": None,
         "note": "该报告说明模型试跑未通过，不代表模型验证成功。",
     }
     if not PHASE2_TRIAL_DIAGNOSTICS_FILE.exists():
@@ -692,6 +697,26 @@ def _load_phase2_trial_diagnostics_summary() -> dict:
         "- `selected_code_mismatch_count`: ",
     )
     summary["unsafe_auto_code_count"] = _extract_markdown_int(text, "- `unsafe_auto_code_count`: ")
+    summary["current_parser_valid_count"] = _extract_markdown_int(
+        text,
+        "- `current_parser_valid_count`: ",
+    )
+    summary["current_status_match_count"] = _extract_markdown_int(
+        text,
+        "- `current_status_match_count`: ",
+    )
+    summary["current_selected_code_match_count"] = _extract_markdown_int(
+        text,
+        "- `current_selected_code_match_count`: ",
+    )
+    summary["current_selected_code_mismatch_count"] = _extract_markdown_int(
+        text,
+        "- `current_selected_code_mismatch_count`: ",
+    )
+    summary["current_unsafe_auto_code_count"] = _extract_markdown_int(
+        text,
+        "- `current_unsafe_auto_code_count`: ",
+    )
     return summary
 
 

@@ -19,6 +19,13 @@
 - `auto_code_count`: 1
 - `unsafe_auto_code_count`: 1
 
+## Current Parser Summary
+- `current_parser_valid_count`: 9
+- `current_status_match_count`: 5
+- `current_selected_code_match_count`: 1
+- `current_selected_code_mismatch_count`: 6
+- `current_unsafe_auto_code_count`: 1
+
 ## Representative Samples
 ### invalid_json
 - None

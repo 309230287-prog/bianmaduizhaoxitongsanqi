@@ -217,6 +217,29 @@
           <strong>{{ phase2_trial_diagnostics.unsafe_auto_code_count }}</strong>
         </div>
       </div>
+      <p class="muted">当前解析器重算</p>
+      <div class="settings-summary diagnostics-summary">
+        <div class="summary-chip">
+          <span>current_parser_valid_count</span>
+          <strong>{{ phase2_trial_diagnostics.current_parser_valid_count }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>current_status_match_count</span>
+          <strong>{{ phase2_trial_diagnostics.current_status_match_count }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>current_selected_code_match_count</span>
+          <strong>{{ phase2_trial_diagnostics.current_selected_code_match_count }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>current_selected_code_mismatch_count</span>
+          <strong>{{ phase2_trial_diagnostics.current_selected_code_mismatch_count }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>current_unsafe_auto_code_count</span>
+          <strong>{{ phase2_trial_diagnostics.current_unsafe_auto_code_count }}</strong>
+        </div>
+      </div>
       {% else %}
       <div class="alert info">暂无诊断报告</div>
       {% endif %}

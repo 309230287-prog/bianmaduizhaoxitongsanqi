@@ -16,16 +16,18 @@ from product_matcher_phase2.trial_diagnostics import (
 
 
 DEFAULT_INPUT = Path("samples/phase2/model_trial_results_deepseek_v0.1.xlsx")
+DEFAULT_TRIAL_INPUT = Path("samples/phase2/model_trial_inputs_v0.1.jsonl")
 DEFAULT_OUTPUT = Path("samples/phase2/model_trial_diagnostics_deepseek_v0.1.md")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Diagnose Phase 2 model trial results offline.")
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
+    parser.add_argument("--trial-input", type=Path, default=DEFAULT_TRIAL_INPUT)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
 
-    summary = diagnose_trial_results_xlsx(args.input)
+    summary = diagnose_trial_results_xlsx(args.input, trial_input_path=args.trial_input)
     markdown = render_trial_diagnostics_markdown(summary)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(markdown, encoding="utf-8")

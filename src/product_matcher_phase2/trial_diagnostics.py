@@ -9,6 +9,8 @@ from typing import Any, Iterable
 from openpyxl import load_workbook
 from pydantic import ValidationError
 
+from product_matcher_phase2.model_io import parse_model_decision_response
+from product_matcher_phase2.model_trial import load_trial_cases_jsonl
 from product_matcher_phase2.schemas import ModelDecision, normalize_model_decision_payload
 
 
@@ -73,8 +75,9 @@ def load_trial_result_rows(path: str | Path) -> list[TrialResultRow]:
         workbook.close()
 
 
-def diagnose_trial_results_xlsx(path: str | Path) -> dict[str, Any]:
+def diagnose_trial_results_xlsx(path: str | Path, trial_input_path: str | Path | None = None) -> dict[str, Any]:
     rows = load_trial_result_rows(path)
+    trial_cases = _load_trial_case_lookup(trial_input_path)
     categories: dict[str, list[dict[str, Any]]] = {category: [] for category in DIAGNOSTIC_CATEGORIES}
     category_counts: Counter[str] = Counter()
     for row in rows:
@@ -97,6 +100,48 @@ def diagnose_trial_results_xlsx(path: str | Path) -> dict[str, Any]:
         "category_counts": {category: category_counts.get(category, 0) for category in DIAGNOSTIC_CATEGORIES},
         "representative_samples": categories,
         "acceptance_summary": summarize_acceptance(rows),
+        "current_parser_summary": summarize_current_parser(rows, trial_cases),
+    }
+
+
+def summarize_current_parser(rows: Iterable[TrialResultRow], trial_cases: dict[str, Any] | None = None) -> dict[str, int]:
+    row_list = list(rows)
+    case_lookup = trial_cases or {}
+    parser_valid_count = 0
+    status_match_count = 0
+    selected_code_match_count = 0
+    selected_code_mismatch_count = 0
+    unsafe_auto_code_count = 0
+
+    for row in row_list:
+        raw_output = (row.raw_model_output or "").strip()
+        if not raw_output:
+            continue
+        decision = parse_model_decision_response(raw_output)
+        if decision.result_status.value == "model_error":
+            continue
+        parser_valid_count += 1
+
+        if decision.result_status.value == row.expected_result_status:
+            status_match_count += 1
+
+        selected_code = _selected_company_code_from_current_decision(row, decision.selected_candidate_id, case_lookup)
+        expected_code = (row.expected_company_code or "").strip()
+        if expected_code:
+            if selected_code == expected_code:
+                selected_code_match_count += 1
+            else:
+                selected_code_mismatch_count += 1
+
+        if _is_unsafe_current_auto_code(row, decision.can_auto_code, selected_code):
+            unsafe_auto_code_count += 1
+
+    return {
+        "current_parser_valid_count": parser_valid_count,
+        "current_status_match_count": status_match_count,
+        "current_selected_code_match_count": selected_code_match_count,
+        "current_selected_code_mismatch_count": selected_code_mismatch_count,
+        "current_unsafe_auto_code_count": unsafe_auto_code_count,
     }
 
 
@@ -164,6 +209,17 @@ def render_trial_diagnostics_markdown(summary: dict[str, Any]) -> str:
         "unsafe_auto_code_count",
     ):
         lines.append(f"- `{key}`: {acceptance_summary.get(key, 0)}")
+
+    lines.extend(["", "## Current Parser Summary"])
+    current_parser_summary = summary.get("current_parser_summary", {})
+    for key in (
+        "current_parser_valid_count",
+        "current_status_match_count",
+        "current_selected_code_match_count",
+        "current_selected_code_mismatch_count",
+        "current_unsafe_auto_code_count",
+    ):
+        lines.append(f"- `{key}`: {current_parser_summary.get(key, 0)}")
 
     lines.extend(["", "## Representative Samples"])
     representative_samples = summary.get("representative_samples", {})
@@ -269,3 +325,40 @@ def _row_can_auto_code(row: TrialResultRow) -> bool:
     except json.JSONDecodeError:
         return False
     return _to_bool(payload.get("can_auto_code"))
+
+
+def _load_trial_case_lookup(trial_input_path: str | Path | None) -> dict[str, Any]:
+    if trial_input_path is None:
+        return {}
+    path = Path(trial_input_path)
+    if not path.exists():
+        return {}
+    return {case.sample_id: case for case in load_trial_cases_jsonl(path)}
+
+
+def _selected_company_code_from_current_decision(
+    row: TrialResultRow,
+    selected_candidate_id: str | None,
+    trial_cases: dict[str, Any],
+) -> str:
+    if not selected_candidate_id:
+        return ""
+    case = trial_cases.get(row.sample_id)
+    if case is not None:
+        for candidate in case.payload.get("candidate_products", []):
+            if candidate.get("candidate_id") != selected_candidate_id:
+                continue
+            product = candidate.get("product") or {}
+            return str(product.get("code", "") or "")
+    return (row.selected_company_code or "").strip()
+
+
+def _is_unsafe_current_auto_code(row: TrialResultRow, can_auto_code: bool, selected_code: str) -> bool:
+    if not can_auto_code:
+        return False
+    if row.expected_result_status != "strong_auto_code":
+        return True
+    expected_code = (row.expected_company_code or "").strip()
+    if expected_code and selected_code != expected_code:
+        return True
+    return False
