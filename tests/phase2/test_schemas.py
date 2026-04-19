@@ -206,6 +206,7 @@ class Phase2SchemaTests(unittest.TestCase):
                         "单位和规格冲突可能表示不同包装层级或产品",
                         "客户未表达无糖系列，不能脑补",
                         "候选商品列表为空，无法进行语义匹配。",
+                        "无候选商品，无法评估风险。",
                         "name_partial_match",
                     ],
                     summary="需要人工审核。",
@@ -230,6 +231,7 @@ class Phase2SchemaTests(unittest.TestCase):
             [
                 RiskFlag.PACKAGE_CONFLICT,
                 RiskFlag.NEEDS_UNSTATED_ASSUMPTION,
+                RiskFlag.CANDIDATE_POOL_MISSING_EVIDENCE,
                 RiskFlag.CANDIDATE_POOL_MISSING_EVIDENCE,
                 RiskFlag.CORE_NAME_UNCERTAIN,
             ],

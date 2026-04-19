@@ -16,7 +16,7 @@ from product_matcher_phase2.trial_diagnostics import (
 
 
 DEFAULT_INPUT = Path("samples/phase2/model_trial_results_deepseek_v0.1.xlsx")
-DEFAULT_TRIAL_INPUT = Path("samples/phase2/model_trial_inputs_v0.1.jsonl")
+DEFAULT_TRIAL_INPUT = Path("samples/phase2/model_trial_inputs_v0.2.jsonl")
 DEFAULT_OUTPUT = Path("samples/phase2/model_trial_diagnostics_deepseek_v0.1.md")
 
 

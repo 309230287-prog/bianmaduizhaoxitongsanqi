@@ -25,7 +25,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run phase-2 model trial inputs.")
     parser.add_argument(
         "--input",
-        default=str(ROOT / "samples" / "phase2" / "model_trial_inputs_v0.1.jsonl"),
+        default=str(ROOT / "samples" / "phase2" / "model_trial_inputs_v0.2.jsonl"),
         help="Path to phase-2 model trial JSONL inputs.",
     )
     parser.add_argument(

@@ -10,7 +10,7 @@ from openpyxl import load_workbook
 from pydantic import ValidationError
 
 from product_matcher_phase2.model_io import parse_model_decision_response
-from product_matcher_phase2.model_trial import load_trial_cases_jsonl
+from product_matcher_phase2.model_trial import apply_payload_safety_gate, load_trial_cases_jsonl
 from product_matcher_phase2.schemas import ModelDecision, normalize_model_decision_payload
 
 
@@ -118,6 +118,9 @@ def summarize_current_parser(rows: Iterable[TrialResultRow], trial_cases: dict[s
         if not raw_output:
             continue
         decision = parse_model_decision_response(raw_output)
+        case = case_lookup.get(row.sample_id)
+        if case is not None:
+            decision = apply_payload_safety_gate(case.payload, decision)
         if decision.result_status.value == "model_error":
             continue
         parser_valid_count += 1

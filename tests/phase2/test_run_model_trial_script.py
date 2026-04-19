@@ -23,6 +23,11 @@ class Phase2RunModelTrialScriptTests(unittest.TestCase):
 
         self.assertIsNone(args.limit)
 
+    def test_parse_args_defaults_to_current_refreshed_trial_input(self) -> None:
+        args = parse_args([])
+
+        self.assertTrue(args.input.endswith("model_trial_inputs_v0.2.jsonl"))
+
 
 if __name__ == "__main__":
     unittest.main()

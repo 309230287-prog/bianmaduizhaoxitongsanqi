@@ -75,7 +75,7 @@ def _infer_risk_flag_from_text(text: str) -> RiskFlag | None:
         return RiskFlag.UNIT_CONFLICT
     if "spec" in lowered and ("conflict" in lowered or "mismatch" in lowered or "missing" in lowered):
         return RiskFlag.SPEC_CONFLICT
-    if "候选商品列表为空" in text or "候选池为空" in text:
+    if "候选商品列表为空" in text or "候选池为空" in text or "无候选商品" in text:
         return RiskFlag.CANDIDATE_POOL_MISSING_EVIDENCE
     if "多个候选" in text or "其他候选" in text or "混淆" in text:
         return RiskFlag.MULTIPLE_VALID_CANDIDATES

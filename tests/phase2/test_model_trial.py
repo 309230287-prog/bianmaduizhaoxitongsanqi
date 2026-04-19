@@ -201,6 +201,53 @@ class ModelTrialTests(unittest.TestCase):
         self.assertEqual(summary["auto_code_count"], 1)
         self.assertEqual(summary["unsafe_auto_code_count"], 1)
 
+    def test_run_trial_cases_blocks_auto_code_when_customer_spec_has_no_candidate_spec_evidence(self) -> None:
+        case = ModelTrialCase(
+            sample_id="GS0029",
+            sample_group="manual_or_unmatched",
+            expected_company_code="C34256292",
+            expected_result_status="suggested_code",
+            payload={
+                "customer_record": {
+                    "mapped_fields": {"name": "白辣椒", "spec": "[1*500g]", "unit": "斤"}
+                },
+                "candidate_products": [
+                    {
+                        "candidate_id": "K000001",
+                        "candidate_evidence": {"spec_tokens": [], "match_sources": ["name_exact", "unit_match"]},
+                        "product": {"code": "C34256292", "name": "白辣椒"},
+                    }
+                ],
+            },
+        )
+
+        def call_model(_payload):
+            return {
+                "customer_semantic_summary": "白辣椒，规格 1*500g，单位斤。",
+                "candidate_assessments": [
+                    {
+                        "candidate_id": "K000001",
+                        "same_business_identity": True,
+                        "risk_flags": [],
+                        "summary": "模型误认为可自动。",
+                    }
+                ],
+                "selected_candidate_id": "K000001",
+                "result_status": "strong_auto_code",
+                "risk_flags": [],
+                "evidence_summary": "模型忽略了候选缺少规格证据。",
+                "manual_review_reason": "",
+                "can_auto_code": True,
+            }
+
+        result = run_trial_cases([case], call_model)[0]
+
+        self.assertEqual(result.parsed_result_status, "suggested_code")
+        self.assertFalse(result.can_auto_code)
+        self.assertTrue(result.selected_code_matches_expected)
+        self.assertFalse(summarize_trial_results([result])["unsafe_auto_code_count"])
+        self.assertIn("候选缺少与客户规格匹配的证据", result.manual_review_reason)
+
 
 if __name__ == "__main__":
     unittest.main()

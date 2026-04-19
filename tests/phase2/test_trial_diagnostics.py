@@ -259,6 +259,98 @@ class TrialDiagnosticsTests(unittest.TestCase):
         self.assertEqual(summary["current_parser_summary"]["current_selected_code_mismatch_count"], 0)
         self.assertEqual(summary["current_parser_summary"]["current_unsafe_auto_code_count"], 0)
 
+    def test_current_parser_summary_applies_payload_safety_gate(self) -> None:
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.append(
+            [
+                "sample_id",
+                "sample_group",
+                "expected_company_code",
+                "expected_result_status",
+                "parsed_result_status",
+                "status_matches_expected",
+                "parse_ok",
+                "selected_candidate_id",
+                "selected_company_code",
+                "can_auto_code",
+                "evidence_summary",
+                "manual_review_reason",
+                "error_message",
+                "raw_model_output",
+            ]
+        )
+        self._write_row(
+            worksheet,
+            {
+                "sample_id": "S7",
+                "sample_group": "manual_or_unmatched",
+                "expected_company_code": "C000001",
+                "expected_result_status": "suggested_code",
+                "parsed_result_status": "strong_auto_code",
+                "status_matches_expected": False,
+                "parse_ok": True,
+                "selected_candidate_id": "K000001",
+                "selected_company_code": "C000001",
+                "can_auto_code": True,
+                "raw_model_output": json.dumps(
+                    {
+                        "customer_semantic_summary": "客户有明确规格。",
+                        "candidate_assessments": [
+                            {
+                                "candidate_id": "K000001",
+                                "same_business_identity": True,
+                                "risk_flags": [],
+                                "summary": "模型误判可自动。",
+                            }
+                        ],
+                        "selected_candidate_id": "K000001",
+                        "result_status": "strong_auto_code",
+                        "risk_flags": [],
+                        "evidence_summary": "模型忽略规格缺失。",
+                        "manual_review_reason": "",
+                        "can_auto_code": True,
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+        )
+
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name)
+            results_path = directory / "trial_results.xlsx"
+            input_path = directory / "trial_inputs.jsonl"
+            input_path.write_text(
+                json.dumps(
+                    {
+                        "sample_id": "S7",
+                        "sample_group": "manual_or_unmatched",
+                        "expected_company_code": "C000001",
+                        "expected_result_status": "suggested_code",
+                        "payload": {
+                            "customer_record": {"mapped_fields": {"spec": "[1*500g]"}},
+                            "candidate_products": [
+                                {
+                                    "candidate_id": "K000001",
+                                    "candidate_evidence": {"spec_tokens": []},
+                                    "product": {"code": "C000001", "name": "测试商品"},
+                                }
+                            ],
+                        },
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            workbook.save(results_path)
+            workbook.close()
+
+            summary = diagnose_trial_results_xlsx(results_path, trial_input_path=input_path)
+
+        self.assertEqual(summary["current_parser_summary"]["current_status_match_count"], 1)
+        self.assertEqual(summary["current_parser_summary"]["current_unsafe_auto_code_count"], 0)
+
     def test_render_trial_diagnostics_markdown_includes_summary_and_samples(self) -> None:
         summary = {
             "source_path": "samples/phase2/model_trial_results_deepseek_v0.1.xlsx",

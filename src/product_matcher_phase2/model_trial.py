@@ -7,8 +7,9 @@ from typing import Any, Callable, Iterable
 
 from openpyxl import Workbook
 
+from product_matcher_phase2.candidate_generation import extract_spec_tokens
 from product_matcher_phase2.model_io import parse_model_decision_response
-from product_matcher_phase2.schemas import ModelDecision, ResultStatus
+from product_matcher_phase2.schemas import ModelDecision, ResultStatus, RiskFlag
 
 
 ModelCaller = Callable[[dict[str, Any]], dict[str, Any] | str]
@@ -72,6 +73,7 @@ def _run_one_case(case: ModelTrialCase, call_model: ModelCaller) -> ModelTrialRe
         model_output = call_model(case.payload)
         raw_output = _serialize_model_output(model_output)
         decision = parse_model_decision_response(raw_output)
+        decision = apply_payload_safety_gate(case.payload, decision)
         parse_ok = decision.result_status != ResultStatus.MODEL_ERROR
         error_message = ""
     except Exception as exc:
@@ -118,6 +120,43 @@ def _call_error_decision(message: str) -> ModelDecision:
         manual_review_reason=f"模型调用失败：{message}",
         can_auto_code=False,
     )
+
+
+def apply_payload_safety_gate(payload: dict[str, Any], decision: ModelDecision) -> ModelDecision:
+    if not decision.can_auto_code or not decision.selected_candidate_id:
+        return decision
+
+    customer_record = payload.get("customer_record") or {}
+    mapped_fields = customer_record.get("mapped_fields") if isinstance(customer_record, dict) else {}
+    customer_spec = str((mapped_fields or {}).get("spec", "")).strip() if isinstance(mapped_fields, dict) else ""
+    customer_spec_tokens = extract_spec_tokens(customer_spec)
+    if not customer_spec_tokens:
+        return decision
+
+    selected_candidate = _selected_candidate_payload(payload, decision.selected_candidate_id)
+    candidate_evidence = selected_candidate.get("candidate_evidence") if selected_candidate else {}
+    candidate_spec_tokens = set(candidate_evidence.get("spec_tokens") or []) if isinstance(candidate_evidence, dict) else set()
+    if customer_spec_tokens.intersection(candidate_spec_tokens):
+        return decision
+
+    downgraded = decision.model_dump(mode="json")
+    downgraded["result_status"] = ResultStatus.SUGGESTED_CODE.value
+    downgraded["can_auto_code"] = False
+    risk_flags = list(dict.fromkeys([*downgraded.get("risk_flags", []), RiskFlag.SPEC_CONFLICT.value]))
+    downgraded["risk_flags"] = risk_flags
+    reason = "安全闸拦截：客户有明确规格，但选中候选缺少与客户规格匹配的证据，不能自动落码。"
+    downgraded["manual_review_reason"] = reason
+    downgraded["evidence_summary"] = "；".join(
+        part for part in [str(downgraded.get("evidence_summary", "")).strip(), reason] if part
+    )
+    return ModelDecision.model_validate(downgraded)
+
+
+def _selected_candidate_payload(payload: dict[str, Any], selected_candidate_id: str) -> dict[str, Any]:
+    for candidate in payload.get("candidate_products", []):
+        if candidate.get("candidate_id") == selected_candidate_id:
+            return candidate
+    return {}
 
 
 def _selected_company_code(payload: dict[str, Any], selected_candidate_id: str | None) -> str:

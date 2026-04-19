@@ -63,7 +63,7 @@ def _product_search_text(product: CompanyProduct) -> str:
     return _normalize(" ".join(part for part in parts if part))
 
 
-def _spec_tokens(spec: str) -> set[str]:
+def extract_spec_tokens(spec: str) -> set[str]:
     normalized = unicodedata.normalize("NFKC", spec).lower()
     tokens = {_normalize(match.group(0)) for match in SPEC_TOKEN_RE.finditer(normalized)}
     tokens.update({_normalize(match.group(0)) for match in COMPOSITE_SPEC_TOKEN_RE.finditer(normalized)})
@@ -77,6 +77,27 @@ def _name_terms(name: str) -> list[str]:
         for term in DOMAIN_SIGNAL_TERMS
         if (normalized_term := _normalize(term)) and normalized_term in normalized_name
     ]
+
+
+def build_candidate_evidence(
+    record: CustomerRecord,
+    product: CompanyProduct,
+    *,
+    match_sources: Iterable[str] | None = None,
+    conflict_notes: Iterable[str] | None = None,
+) -> CandidateEvidence:
+    notes = list(conflict_notes or [])
+    unit = record.mapped_fields.get("unit", "")
+    if unit and product.unit and unit != product.unit and not any("单位不一致" in note for note in notes):
+        notes.append(f"单位不一致：客户={unit}，我司={product.unit}")
+
+    return CandidateEvidence(
+        name_terms=_name_terms(record.mapped_fields.get("name", "")),
+        spec_tokens=sorted(extract_spec_tokens(" ".join([product.name, product.description]))),
+        unit=product.unit,
+        match_sources=list(match_sources or []),
+        conflict_notes=notes,
+    )
 
 
 def _score_product(record: CustomerRecord, product: CompanyProduct) -> _ScoredCandidate | None:
@@ -106,10 +127,15 @@ def _score_product(record: CustomerRecord, product: CompanyProduct) -> _ScoredCa
     else:
         return None
 
-    spec_hits = [token for token in _spec_tokens(spec) if token and token in product_text]
+    spec_hits = [token for token in extract_spec_tokens(spec) if token and token in product_text]
     if spec_hits:
         score += 40
         sources.append("spec_in_product_text")
+
+    spec_name_hits = [token for token in extract_spec_tokens(spec) if token and token in normalized_product_name]
+    if spec_name_hits:
+        score += 40
+        sources.append("spec_in_product_name")
 
     if unit and product.unit:
         if unit == product.unit:
@@ -118,12 +144,11 @@ def _score_product(record: CustomerRecord, product: CompanyProduct) -> _ScoredCa
         else:
             notes.append(f"单位不一致：客户={unit}，我司={product.unit}")
 
-    evidence = CandidateEvidence(
-        name_terms=_name_terms(name),
-        spec_tokens=sorted(_spec_tokens(" ".join([product.name, product.description]))),
-        unit=product.unit,
-        match_sources=list(sources),
-        conflict_notes=list(notes),
+    evidence = build_candidate_evidence(
+        record,
+        product,
+        match_sources=sources,
+        conflict_notes=notes,
     )
     return _ScoredCandidate(score=score, product=product, sources=sources, notes=notes, evidence=evidence)
 

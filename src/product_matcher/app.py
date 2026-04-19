@@ -55,7 +55,7 @@ from product_matcher.services.storage import (
 from product_matcher_phase2.model_trial_runner import build_chat_json_model_caller, run_trial_from_files
 
 BASE_DIR = Path(__file__).resolve().parent
-PHASE2_TRIAL_INPUT_FILE = PROJECT_ROOT / "samples" / "phase2" / "model_trial_inputs_v0.1.jsonl"
+PHASE2_TRIAL_INPUT_FILE = PROJECT_ROOT / "samples" / "phase2" / "model_trial_inputs_v0.2.jsonl"
 PHASE2_TRIAL_DIAGNOSTICS_FILE = PROJECT_ROOT / "samples" / "phase2" / "model_trial_diagnostics_deepseek_v0.1.md"
 
 app = FastAPI(
