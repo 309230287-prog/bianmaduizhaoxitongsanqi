@@ -143,6 +143,10 @@ class TrialDiagnosticsTests(unittest.TestCase):
             summary = diagnose_trial_results_xlsx(path)
 
         self.assertEqual(summary["total_count"], 5)
+        self.assertEqual(summary["acceptance_summary"]["status_match_count"], 0)
+        self.assertEqual(summary["acceptance_summary"]["selected_code_match_count"], 0)
+        self.assertEqual(summary["acceptance_summary"]["selected_code_mismatch_count"], 0)
+        self.assertEqual(summary["acceptance_summary"]["unsafe_auto_code_count"], 2)
         self.assertEqual(
             summary["category_counts"],
             {
@@ -183,6 +187,13 @@ class TrialDiagnosticsTests(unittest.TestCase):
                 "schema_valid_after_normalization": [],
                 "unknown": [],
             },
+            "acceptance_summary": {
+                "status_match_count": 1,
+                "selected_code_match_count": 1,
+                "selected_code_mismatch_count": 0,
+                "auto_code_count": 1,
+                "unsafe_auto_code_count": 0,
+            },
         }
 
         markdown = render_trial_diagnostics_markdown(summary)
@@ -190,6 +201,8 @@ class TrialDiagnosticsTests(unittest.TestCase):
         self.assertIn("model_trial_results_deepseek_v0.1.xlsx", markdown)
         self.assertIn("invalid_json", markdown)
         self.assertIn("S1", markdown)
+        self.assertIn("Acceptance Summary", markdown)
+        self.assertIn("unsafe_auto_code_count", markdown)
 
     def test_diagnose_real_deepseek_trial_results_sample(self) -> None:
         sample_path = ROOT / "samples" / "phase2" / "model_trial_results_deepseek_v0.1.xlsx"

@@ -96,6 +96,22 @@ def diagnose_trial_results_xlsx(path: str | Path) -> dict[str, Any]:
         "total_count": len(rows),
         "category_counts": {category: category_counts.get(category, 0) for category in DIAGNOSTIC_CATEGORIES},
         "representative_samples": categories,
+        "acceptance_summary": summarize_acceptance(rows),
+    }
+
+
+def summarize_acceptance(rows: Iterable[TrialResultRow]) -> dict[str, int]:
+    row_list = list(rows)
+    selected_code_match_count = sum(1 for row in row_list if _selected_code_matches_expected(row))
+    selected_code_mismatch_count = sum(1 for row in row_list if _selected_code_mismatches_expected(row))
+    auto_code_count = sum(1 for row in row_list if _row_can_auto_code(row))
+    unsafe_auto_code_count = sum(1 for row in row_list if _is_unsafe_auto_code(row))
+    return {
+        "status_match_count": sum(1 for row in row_list if _to_bool(row.status_matches_expected)),
+        "selected_code_match_count": selected_code_match_count,
+        "selected_code_mismatch_count": selected_code_mismatch_count,
+        "auto_code_count": auto_code_count,
+        "unsafe_auto_code_count": unsafe_auto_code_count,
     }
 
 
@@ -137,6 +153,17 @@ def render_trial_diagnostics_markdown(summary: dict[str, Any]) -> str:
     ]
     for category in DIAGNOSTIC_CATEGORIES:
         lines.append(f"- `{category}`: {summary.get('category_counts', {}).get(category, 0)}")
+
+    lines.extend(["", "## Acceptance Summary"])
+    acceptance_summary = summary.get("acceptance_summary", {})
+    for key in (
+        "status_match_count",
+        "selected_code_match_count",
+        "selected_code_mismatch_count",
+        "auto_code_count",
+        "unsafe_auto_code_count",
+    ):
+        lines.append(f"- `{key}`: {acceptance_summary.get(key, 0)}")
 
     lines.extend(["", "## Representative Samples"])
     representative_samples = summary.get("representative_samples", {})
@@ -195,3 +222,50 @@ def _shorten(text: str, limit: int = 120) -> str:
     if len(cleaned) <= limit:
         return cleaned
     return cleaned[: limit - 1].rstrip() + "…"
+
+
+def _selected_code_matches_expected(row: TrialResultRow) -> bool:
+    expected_code = (row.expected_company_code or "").strip()
+    if not expected_code:
+        return False
+    return (row.selected_company_code or "").strip() == expected_code
+
+
+def _selected_code_mismatches_expected(row: TrialResultRow) -> bool:
+    expected_code = (row.expected_company_code or "").strip()
+    if not expected_code:
+        return False
+    return (row.selected_company_code or "").strip() != expected_code
+
+
+def _is_unsafe_auto_code(row: TrialResultRow) -> bool:
+    if not _row_can_auto_code(row):
+        return False
+    if row.expected_result_status != "strong_auto_code":
+        return True
+    if _selected_code_mismatches_expected(row):
+        return True
+    return False
+
+
+def _to_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int | float):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "yes", "y"}
+    return False
+
+
+def _row_can_auto_code(row: TrialResultRow) -> bool:
+    if _to_bool(row.can_auto_code):
+        return True
+    raw_output = (row.raw_model_output or "").strip()
+    if not raw_output:
+        return False
+    try:
+        payload = json.loads(raw_output)
+    except json.JSONDecodeError:
+        return False
+    return _to_bool(payload.get("can_auto_code"))

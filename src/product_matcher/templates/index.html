@@ -202,6 +202,21 @@
           <strong>{{ phase2_trial_diagnostics.model_call_error }}</strong>
         </div>
       </div>
+      <p class="muted">诊断红线</p>
+      <div class="settings-summary diagnostics-summary">
+        <div class="summary-chip">
+          <span>status_match_count</span>
+          <strong>{{ phase2_trial_diagnostics.status_match_count }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>selected_code_mismatch_count</span>
+          <strong>{{ phase2_trial_diagnostics.selected_code_mismatch_count }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>unsafe_auto_code_count</span>
+          <strong>{{ phase2_trial_diagnostics.unsafe_auto_code_count }}</strong>
+        </div>
+      </div>
       {% else %}
       <div class="alert info">暂无诊断报告</div>
       {% endif %}

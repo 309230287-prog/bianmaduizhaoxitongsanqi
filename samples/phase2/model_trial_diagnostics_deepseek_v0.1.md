@@ -12,6 +12,13 @@
 - `schema_valid_after_normalization`: 9
 - `unknown`: 0
 
+## Acceptance Summary
+- `status_match_count`: 0
+- `selected_code_match_count`: 0
+- `selected_code_mismatch_count`: 8
+- `auto_code_count`: 1
+- `unsafe_auto_code_count`: 1
+
 ## Representative Samples
 ### invalid_json
 - None

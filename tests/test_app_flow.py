@@ -114,6 +114,9 @@ class AppFlowTests(unittest.TestCase):
         self.assertIn("9", response.text)
         self.assertIn("model_call_error", response.text)
         self.assertIn("1", response.text)
+        self.assertIn("诊断红线", response.text)
+        self.assertIn("unsafe_auto_code_count", response.text)
+        self.assertIn("selected_code_mismatch_count", response.text)
         self.assertIn("该报告说明模型试跑未通过，不代表模型验证成功。", response.text)
 
     def test_home_shows_placeholder_when_phase2_diagnostics_report_missing(self) -> None:

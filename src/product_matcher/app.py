@@ -665,6 +665,9 @@ def _load_phase2_trial_diagnostics_summary() -> dict:
         "schema_validation_error": None,
         "schema_valid_after_normalization": None,
         "model_call_error": None,
+        "status_match_count": None,
+        "selected_code_mismatch_count": None,
+        "unsafe_auto_code_count": None,
         "note": "该报告说明模型试跑未通过，不代表模型验证成功。",
     }
     if not PHASE2_TRIAL_DIAGNOSTICS_FILE.exists():
@@ -683,6 +686,12 @@ def _load_phase2_trial_diagnostics_summary() -> dict:
         "- `schema_valid_after_normalization`: ",
     )
     summary["model_call_error"] = _extract_markdown_int(text, "- `model_call_error`: ")
+    summary["status_match_count"] = _extract_markdown_int(text, "- `status_match_count`: ")
+    summary["selected_code_mismatch_count"] = _extract_markdown_int(
+        text,
+        "- `selected_code_mismatch_count`: ",
+    )
+    summary["unsafe_auto_code_count"] = _extract_markdown_int(text, "- `unsafe_auto_code_count`: ")
     return summary
 
 
