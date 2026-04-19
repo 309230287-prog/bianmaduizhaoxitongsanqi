@@ -64,8 +64,17 @@ def load_trial_cases_jsonl(path: str | Path) -> list[ModelTrialCase]:
 def run_trial_cases(
     cases: Iterable[ModelTrialCase],
     call_model: ModelCaller,
+    *,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> list[ModelTrialResult]:
-    return [_run_one_case(case, call_model) for case in cases]
+    case_list = list(cases)
+    results = []
+    total = len(case_list)
+    for index, case in enumerate(case_list, start=1):
+        results.append(_run_one_case(case, call_model))
+        if on_progress:
+            on_progress(index, total)
+    return results
 
 
 def _run_one_case(case: ModelTrialCase, call_model: ModelCaller) -> ModelTrialResult:

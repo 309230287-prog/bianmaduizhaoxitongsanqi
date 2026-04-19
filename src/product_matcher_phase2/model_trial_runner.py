@@ -52,10 +52,11 @@ def run_trial_from_files(
     model_caller: ModelCaller,
     *,
     limit: int | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> dict[str, Any]:
     cases = load_trial_cases_jsonl(input_path)
     if limit is not None:
         cases = cases[:limit]
-    results = run_trial_cases(cases, model_caller)
+    results = run_trial_cases(cases, model_caller, on_progress=on_progress)
     write_trial_results_xlsx(results, output_path)
     return summarize_trial_results(results)

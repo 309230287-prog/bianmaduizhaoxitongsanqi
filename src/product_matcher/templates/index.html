@@ -70,7 +70,7 @@
           <p class="eyebrow">Start Here</p>
           <h2>怎么操作</h2>
         </div>
-        <span class="model-pill">推荐先跑 3 条</span>
+        <span class="model-pill">推荐先跑 1-3 条</span>
       </div>
       <div class="steps-grid">
         <div class="step-card">
@@ -106,14 +106,14 @@
         <label>
           <span>本次试跑样本数</span>
           <select name="sample_limit">
-            <option value="1">1 条，快速冒烟</option>
-            <option value="3" selected>3 条，小批验证</option>
-            <option value="10">10 条，契约验证</option>
+            <option value="1" selected>1 条，最快确认模型通不通</option>
+            <option value="3">3 条，小批验证</option>
+            <option value="10">10 条，慢速契约验证</option>
           </select>
         </label>
         <button type="submit">启动二期语义试跑</button>
       </form>
-      <p class="muted">路书边界：这个工作台用于验证 Phase 2 到 Phase 4 的模型输出契约、候选证据和风险分级；不能把结果包装成成熟自动落码能力。</p>
+      <p class="muted">路书边界：这个工作台用于验证 Phase 2 到 Phase 4 的模型输出契约、候选证据和风险分级；每条样本都会调用一次大模型，10 条会明显更慢。</p>
       {% if phase2_trial_message %}
       <div class="alert info">{{ phase2_trial_message }}</div>
       {% endif %}

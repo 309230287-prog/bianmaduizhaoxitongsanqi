@@ -136,6 +136,49 @@ class ModelTrialRunnerTests(unittest.TestCase):
             self.assertEqual(calls[0]["customer_record"]["record_id"], "C1")
             self.assertEqual(calls[1]["customer_record"]["record_id"], "C2")
 
+    def test_run_trial_from_files_reports_progress_after_each_case(self) -> None:
+        progress_events = []
+
+        def fake_model_caller(_payload):
+            return {
+                "customer_semantic_summary": "缺少候选。",
+                "candidate_assessments": [],
+                "selected_candidate_id": None,
+                "result_status": "manual_review",
+                "risk_flags": ["candidate_pool_missing_evidence"],
+                "evidence_summary": "无候选。",
+                "manual_review_reason": "候选池为空，需要人工审核。",
+                "can_auto_code": False,
+            }
+
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name)
+            input_path = directory / "trial_inputs.jsonl"
+            rows = [
+                {
+                    "sample_id": f"GS000{i}",
+                    "sample_group": "manual_review",
+                    "expected_company_code": "",
+                    "expected_result_status": "manual_review",
+                    "payload": {"customer_record": {"record_id": f"C{i}"}, "candidate_products": []},
+                }
+                for i in range(1, 4)
+            ]
+            input_path.write_text(
+                "\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + "\n",
+                encoding="utf-8",
+            )
+            output_path = directory / "trial_results.xlsx"
+
+            run_trial_from_files(
+                input_path,
+                output_path,
+                fake_model_caller,
+                on_progress=lambda completed, total: progress_events.append((completed, total)),
+            )
+
+        self.assertEqual(progress_events, [(1, 3), (2, 3), (3, 3)])
+
 
 if __name__ == "__main__":
     unittest.main()

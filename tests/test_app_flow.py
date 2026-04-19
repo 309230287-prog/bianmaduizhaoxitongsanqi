@@ -208,10 +208,13 @@ class AppFlowTests(unittest.TestCase):
                 captured["runtime_settings"] = runtime_settings
                 return lambda payload: {"ok": payload}
 
-            def fake_run_trial(input_path, output_path, model_caller, *, limit=None):
+            def fake_run_trial(input_path, output_path, model_caller, *, limit=None, on_progress=None):
                 captured["input_path"] = Path(input_path)
                 captured["limit"] = limit
                 captured["model_probe"] = model_caller({"probe": True})
+                if on_progress:
+                    on_progress(1, 2)
+                    on_progress(2, 2)
                 Path(output_path).parent.mkdir(parents=True, exist_ok=True)
                 Path(output_path).write_bytes(b"fake xlsx")
                 return {
@@ -331,6 +334,8 @@ class AppFlowTests(unittest.TestCase):
                 self.assertIn("1. 确认模型", home.text)
                 self.assertIn("2. 运行真实批量", home.text)
                 self.assertIn("3. 下载结果", home.text)
+                self.assertIn("推荐先跑 1-3 条", home.text)
+                self.assertIn("10 条会明显更慢", home.text)
                 self.assertIn("二期真实批量落码", home.text)
                 self.assertIn("/phase2/batch", home.text)
 
@@ -518,7 +523,8 @@ class AppFlowTests(unittest.TestCase):
                  patch.object(job_status, "EXPORT_OUTPUT_DIR", export_dir), \
                  patch.object(logging_service, "LOG_DIR", log_dir), \
                  patch.object(logging_service, "APP_LOG_FILE", log_dir / "app.log"), \
-                 patch.object(logging_service, "ACTION_LOG_FILE", log_dir / "actions.jsonl"):
+                 patch.object(logging_service, "ACTION_LOG_FILE", log_dir / "actions.jsonl"), \
+                 patch.object(app_module, "_resolve_runtime_settings_for_pipeline", return_value=(None, "测试使用本地逻辑。")):
                 with company_file.open("rb") as cf, customer_file.open("rb") as uf:
                     preview = client.post(
                         "/preview",

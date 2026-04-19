@@ -1085,11 +1085,25 @@ def _run_phase2_trial_job(job_id: str, request_id: str, sample_limit: int) -> No
         output_path = job_status_service.EXPORT_OUTPUT_DIR / f"{job_id}_{output_filename}"
         output_path.parent.mkdir(parents=True, exist_ok=True)
         model_caller = build_chat_json_model_caller(runtime_settings)
+
+        def update_trial_progress(completed: int, total: int) -> None:
+            progress = 15 if total <= 0 else 15 + int((completed / total) * 75)
+            job_status_service.update_job(
+                job_id,
+                status="running",
+                progress=min(progress, 90),
+                message=(
+                    f"已启用模型 {runtime_settings['production_model_name']}，"
+                    f"已完成 {completed}/{total} 条样本。"
+                ),
+            )
+
         summary = run_trial_from_files(
             PHASE2_TRIAL_INPUT_FILE,
             output_path,
             model_caller,
             limit=sample_limit,
+            on_progress=update_trial_progress,
         )
         job_status_service.update_job(
             job_id,
