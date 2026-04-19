@@ -52,11 +52,19 @@ from product_matcher.services.storage import (
     load_upload_session,
     save_mapping_template,
 )
+from product_matcher_phase2.batch_runner import (
+    run_phase2_batch,
+    summarize_batch_results,
+    write_phase2_batch_results_xlsx,
+)
+from product_matcher_phase2.excel_loader import load_company_products, load_customer_records
 from product_matcher_phase2.model_trial_runner import build_chat_json_model_caller, run_trial_from_files
 
 BASE_DIR = Path(__file__).resolve().parent
 PHASE2_TRIAL_INPUT_FILE = PROJECT_ROOT / "samples" / "phase2" / "model_trial_inputs_v0.2.jsonl"
 PHASE2_TRIAL_DIAGNOSTICS_FILE = PROJECT_ROOT / "samples" / "phase2" / "model_trial_diagnostics_deepseek_v0.1.md"
+PHASE2_BATCH_CUSTOMER_FILE = PROJECT_ROOT / "客户商品库.xlsx"
+PHASE2_BATCH_COMPANY_FILE = PROJECT_ROOT / "我司商品库.xlsx"
 
 app = FastAPI(
     title="商品智能匹配系统 MVP",
@@ -382,6 +390,43 @@ async def start_phase2_trial(
     return templates.TemplateResponse(request, "index.html", context)
 
 
+@app.post("/phase2/batch", response_class=HTMLResponse)
+async def start_phase2_batch(
+    request: Request,
+    row_limit: int = Form(3),
+    candidate_limit: int = Form(10),
+) -> HTMLResponse:
+    row_limit = _normalize_phase2_batch_row_limit(row_limit)
+    candidate_limit = _normalize_phase2_candidate_limit(candidate_limit)
+    phase2_batch_job = job_status_service.create_job(
+        "phase2_batch",
+        {
+            "customer_file": str(PHASE2_BATCH_CUSTOMER_FILE),
+            "company_file": str(PHASE2_BATCH_COMPANY_FILE),
+            "row_limit": row_limit,
+            "candidate_limit": candidate_limit,
+        },
+    )
+    _start_phase2_batch_job(
+        phase2_batch_job["job_id"],
+        request.state.request_id,
+        row_limit,
+        candidate_limit,
+    )
+    log_action(
+        "phase2_batch_started",
+        request_id=request.state.request_id,
+        phase2_batch_job_id=phase2_batch_job["job_id"],
+        row_limit=row_limit,
+        candidate_limit=candidate_limit,
+    )
+    context = _build_context(
+        phase2_batch_job=phase2_batch_job,
+        phase2_batch_message="二期真实批量任务已创建，页面会自动刷新进度。",
+    )
+    return templates.TemplateResponse(request, "index.html", context)
+
+
 @app.get("/jobs/{job_id}")
 async def get_job_status(job_id: str) -> JSONResponse:
     try:
@@ -424,6 +469,30 @@ async def download_phase2_trial_file(job_id: str) -> Response:
     output_path = Path(str(payload.get("output_path", "")).strip())
     if not output_path.exists():
         return Response(content="二期语义试跑结果文件不存在。", status_code=404)
+
+    filename = str(payload.get("output_filename", "")).strip() or output_path.name
+    encoded_filename = quote(filename)
+    headers = {
+        "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
+    }
+    return Response(
+        content=output_path.read_bytes(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers,
+    )
+
+
+@app.get("/phase2/batch/download/{job_id}")
+async def download_phase2_batch_file(job_id: str) -> Response:
+    payload = job_status_service.load_job(job_id)
+    if payload.get("job_type") != "phase2_batch":
+        return Response(content="不是二期真实批量任务。", status_code=404)
+    if payload.get("status") != "completed":
+        return Response(content="二期真实批量任务尚未完成。", status_code=409)
+
+    output_path = Path(str(payload.get("output_path", "")).strip())
+    if not output_path.exists():
+        return Response(content="二期真实批量结果文件不存在。", status_code=404)
 
     filename = str(payload.get("output_filename", "")).strip() or output_path.name
     encoded_filename = quote(filename)
@@ -622,9 +691,13 @@ def _build_context(**overrides):
         "match_engine_fallback": None,
         "export_job": None,
         "phase2_trial_input_path": str(PHASE2_TRIAL_INPUT_FILE),
+        "phase2_batch_customer_path": str(PHASE2_BATCH_CUSTOMER_FILE),
+        "phase2_batch_company_path": str(PHASE2_BATCH_COMPANY_FILE),
         "phase2_trial_diagnostics": _load_phase2_trial_diagnostics_summary(),
         "phase2_trial_job": None,
         "phase2_trial_message": None,
+        "phase2_batch_job": None,
+        "phase2_batch_message": None,
     }
     base.update(overrides)
     return base
@@ -953,6 +1026,18 @@ def _normalize_phase2_sample_limit(sample_limit: int) -> int:
     return min(sample_limit, 10)
 
 
+def _normalize_phase2_batch_row_limit(row_limit: int) -> int:
+    if row_limit <= 0:
+        return 1
+    return min(row_limit, 50)
+
+
+def _normalize_phase2_candidate_limit(candidate_limit: int) -> int:
+    if candidate_limit <= 0:
+        return 1
+    return min(candidate_limit, 20)
+
+
 def _start_phase2_trial_job(job_id: str, request_id: str, sample_limit: int) -> None:
     worker = Thread(
         target=_run_phase2_trial_job,
@@ -1020,3 +1105,106 @@ def _run_phase2_trial_job(job_id: str, request_id: str, sample_limit: int) -> No
             error=str(exc),
         )
         log_exception("phase2_trial_failed", exc, request_id=request_id, phase2_trial_job_id=job_id)
+
+
+def _start_phase2_batch_job(
+    job_id: str,
+    request_id: str,
+    row_limit: int,
+    candidate_limit: int,
+) -> None:
+    worker = Thread(
+        target=_run_phase2_batch_job,
+        args=(job_id, request_id, row_limit, candidate_limit),
+        daemon=True,
+    )
+    worker.start()
+
+
+def _run_phase2_batch_job(
+    job_id: str,
+    request_id: str,
+    row_limit: int,
+    candidate_limit: int,
+) -> None:
+    try:
+        job_status_service.update_job(
+            job_id,
+            status="running",
+            progress=5,
+            message="正在准备二期真实批量任务。",
+        )
+        if not PHASE2_BATCH_CUSTOMER_FILE.exists():
+            raise FileNotFoundError(f"未找到客户商品库：{PHASE2_BATCH_CUSTOMER_FILE}")
+        if not PHASE2_BATCH_COMPANY_FILE.exists():
+            raise FileNotFoundError(f"未找到我司商品库：{PHASE2_BATCH_COMPANY_FILE}")
+
+        runtime_settings, runtime_warning = _resolve_runtime_settings_for_pipeline()
+        if not runtime_settings:
+            raise RuntimeError(f"当前模型不可用：{runtime_warning}")
+
+        job_status_service.update_job(
+            job_id,
+            status="running",
+            progress=15,
+            message="正在读取客户库和我司商品库。",
+        )
+        customer_records = load_customer_records(PHASE2_BATCH_CUSTOMER_FILE)
+        company_products = load_company_products(PHASE2_BATCH_COMPANY_FILE)
+
+        job_status_service.update_job(
+            job_id,
+            status="running",
+            progress=30,
+            message=(
+                f"已启用模型 {runtime_settings['production_model_name']}，"
+                f"开始处理 {row_limit} 条客户商品。"
+            ),
+        )
+        model_caller = build_chat_json_model_caller(runtime_settings)
+        rows = run_phase2_batch(
+            customer_records,
+            company_products,
+            model_caller,
+            candidate_limit=candidate_limit,
+            max_rows=row_limit,
+        )
+
+        job_status_service.update_job(
+            job_id,
+            status="running",
+            progress=92,
+            message="二期批量判断完成，正在生成 Excel 结果。",
+        )
+        output_filename = f"phase2_batch_results_{job_id[:8]}.xlsx"
+        output_path = job_status_service.EXPORT_OUTPUT_DIR / f"{job_id}_{output_filename}"
+        write_phase2_batch_results_xlsx(rows, output_path)
+        summary = summarize_batch_results(rows)
+        job_status_service.update_job(
+            job_id,
+            status="completed",
+            progress=100,
+            message="二期真实批量任务完成，可以下载结果文件。",
+            output_filename=output_filename,
+            output_path=str(output_path),
+            summary=summary,
+            model_name=runtime_settings["production_model_name"],
+        )
+        log_action(
+            "phase2_batch_completed",
+            request_id=request_id,
+            phase2_batch_job_id=job_id,
+            row_limit=row_limit,
+            candidate_limit=candidate_limit,
+            summary=summary,
+            model_name=runtime_settings["production_model_name"],
+        )
+    except Exception as exc:
+        job_status_service.update_job(
+            job_id,
+            status="failed",
+            progress=100,
+            message=f"二期真实批量任务失败：{exc}",
+            error=str(exc),
+        )
+        log_exception("phase2_batch_failed", exc, request_id=request_id, phase2_batch_job_id=job_id)

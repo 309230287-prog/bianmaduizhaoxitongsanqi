@@ -255,6 +255,93 @@ class AppFlowTests(unittest.TestCase):
                 self.assertEqual(download.status_code, 200)
                 self.assertEqual(download.content, b"fake xlsx")
 
+    def test_phase2_batch_runs_from_product_page_and_writes_job_result(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            customer_path = tmp_path / "客户商品库.xlsx"
+            company_path = tmp_path / "我司商品库.xlsx"
+            customer_path.write_bytes(b"customer workbook")
+            company_path.write_bytes(b"company workbook")
+            jobs_dir = tmp_path / "jobs"
+            output_dir = tmp_path / "outputs"
+            log_dir = tmp_path / "logs"
+            client = TestClient(app)
+            captured = {}
+
+            def fake_build_caller(runtime_settings):
+                captured["runtime_settings"] = runtime_settings
+                return lambda payload: {"ok": payload}
+
+            def fake_run_batch(customer_records, company_products, model_caller, *, candidate_limit=10, max_rows=None):
+                captured["customer_records"] = customer_records
+                captured["company_products"] = company_products
+                captured["candidate_limit"] = candidate_limit
+                captured["max_rows"] = max_rows
+                captured["model_probe"] = model_caller({"probe": True})
+                return ["fake-row"]
+
+            def fake_write_batch(rows, output_path):
+                captured["rows"] = rows
+                Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+                Path(output_path).write_bytes(b"fake phase2 batch xlsx")
+
+            with patch.object(app_module, "PHASE2_BATCH_CUSTOMER_FILE", customer_path), \
+                 patch.object(app_module, "PHASE2_BATCH_COMPANY_FILE", company_path), \
+                 patch.object(job_status, "JOBS_DIR", jobs_dir), \
+                 patch.object(job_status, "EXPORT_OUTPUT_DIR", output_dir), \
+                 patch.object(logging_service, "LOG_DIR", log_dir), \
+                 patch.object(logging_service, "APP_LOG_FILE", log_dir / "app.log"), \
+                 patch.object(logging_service, "ACTION_LOG_FILE", log_dir / "actions.jsonl"), \
+                 patch.object(app_module, "_resolve_runtime_settings_for_pipeline", return_value=(
+                     {"provider_name": "deepseek", "production_model_name": "deepseek-chat", "api_key": "sk-test"},
+                     None,
+                 )), \
+                 patch.object(app_module, "load_customer_records", return_value=["customer-record"]), \
+                 patch.object(app_module, "load_company_products", return_value=["company-product"]), \
+                 patch.object(app_module, "build_chat_json_model_caller", side_effect=fake_build_caller), \
+                 patch.object(app_module, "run_phase2_batch", side_effect=fake_run_batch), \
+                 patch.object(app_module, "write_phase2_batch_results_xlsx", side_effect=fake_write_batch), \
+                 patch.object(app_module, "summarize_batch_results", return_value={
+                     "total_count": 3,
+                     "json_valid_count": 3,
+                     "json_valid_rate": 1.0,
+                     "auto_code_count": 1,
+                     "suggested_or_review_count": 2,
+                     "unmatched_count": 0,
+                     "model_error_count": 0,
+                 }):
+                home = client.get("/")
+                self.assertEqual(home.status_code, 200)
+                self.assertIn("二期真实批量落码", home.text)
+                self.assertIn("/phase2/batch", home.text)
+
+                response = client.post("/phase2/batch", data={"row_limit": "3", "candidate_limit": "5"})
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("二期真实批量任务", response.text)
+                self.assertIn("自动落码", response.text)
+                self.assertIn("建议/人工", response.text)
+                job_id = re.search(r'data-phase2-batch-job-id="([^"]+)"', response.text).group(1)
+
+                payload = self._wait_for_phase2_job(jobs_dir, job_id)
+
+                self.assertEqual(payload["status"], "completed")
+                self.assertEqual(payload["job_type"], "phase2_batch")
+                self.assertEqual(payload["summary"]["total_count"], 3)
+                self.assertEqual(payload["summary"]["auto_code_count"], 1)
+                self.assertEqual(captured["customer_records"], ["customer-record"])
+                self.assertEqual(captured["company_products"], ["company-product"])
+                self.assertEqual(captured["candidate_limit"], 5)
+                self.assertEqual(captured["max_rows"], 3)
+                self.assertEqual(captured["runtime_settings"]["production_model_name"], "deepseek-chat")
+                self.assertEqual(captured["model_probe"], {"ok": {"probe": True}})
+                self.assertEqual(captured["rows"], ["fake-row"])
+                self.assertTrue(Path(payload["output_path"]).exists())
+
+                download = client.get(f"/phase2/batch/download/{job_id}")
+                self.assertEqual(download.status_code, 200)
+                self.assertEqual(download.content, b"fake phase2 batch xlsx")
+
     def test_match_prefers_ai_pipeline_when_model_runtime_is_ready(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)

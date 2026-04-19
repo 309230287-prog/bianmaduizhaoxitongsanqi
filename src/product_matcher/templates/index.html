@@ -169,6 +169,42 @@
       {% endif %}
     </section>
 
+    <section class="card phase2-card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Phase 2 Live Batch</p>
+          <h2>二期真实批量落码</h2>
+        </div>
+        <span class="model-pill">1.0 闭环</span>
+      </div>
+      <p class="muted">这里读取项目根目录下的客户商品库和我司商品库，走二期语义候选、模型判断、安全闸，然后导出人工可复核的 Excel。</p>
+      <p class="muted">客户库：{{ phase2_batch_customer_path }}；我司库：{{ phase2_batch_company_path }}</p>
+      <form class="phase2-form" action="/phase2/batch" method="post">
+        <label>
+          <span>本次处理客户行数</span>
+          <select name="row_limit">
+            <option value="1">1 条，连通性冒烟</option>
+            <option value="3" selected>3 条，小批真实验证</option>
+            <option value="10">10 条，小批复核</option>
+            <option value="50">50 条，较大样本</option>
+          </select>
+        </label>
+        <label>
+          <span>每行候选数</span>
+          <select name="candidate_limit">
+            <option value="5">5 个，节省模型输入</option>
+            <option value="10" selected>10 个，默认平衡</option>
+            <option value="20">20 个，扩大候选池</option>
+          </select>
+        </label>
+        <button type="submit">启动二期真实批量任务</button>
+      </form>
+      <p class="muted">当前 1.0 原则：能自动落码才自动；证据不足就给建议或人工审核，不强行猜。</p>
+      {% if phase2_batch_message %}
+      <div class="alert info">{{ phase2_batch_message }}</div>
+      {% endif %}
+    </section>
+
     <section class="card phase2-diagnostics-card">
       <div class="section-heading">
         <div>
@@ -297,6 +333,54 @@
       </div>
       <div class="actions" id="phase2-job-download-actions" style="display:none;">
         <a class="download-link" id="phase2-job-download-link" href="#">下载二期试跑结果</a>
+      </div>
+    </section>
+    {% endif %}
+
+    {% if phase2_batch_job %}
+    <section class="card" id="phase2-batch-job-card" data-phase2-batch-job-id="{{ phase2_batch_job.job_id }}">
+      <h2>二期真实批量任务</h2>
+      <div class="job-meta">
+        <span>任务编号：<strong id="phase2-batch-job-id">{{ phase2_batch_job.job_id }}</strong></span>
+        <span>当前状态：<strong id="phase2-batch-job-status">{{ phase2_batch_job.status }}</strong></span>
+      </div>
+      <div class="progress-shell">
+        <div class="progress-bar" id="phase2-batch-job-progress-bar" style="width: {{ phase2_batch_job.progress }}%;"></div>
+      </div>
+      <div class="job-meta">
+        <span>进度：<strong id="phase2-batch-job-progress-text">{{ phase2_batch_job.progress }}%</strong></span>
+        <span>更新时间：<strong id="phase2-batch-job-updated-at">{{ phase2_batch_job.updated_at }}</strong></span>
+      </div>
+      <div class="alert info" id="phase2-batch-job-message">{{ phase2_batch_job.message }}</div>
+      <div class="alert error" id="phase2-batch-job-error" style="display:none;"></div>
+      <div class="phase2-summary" id="phase2-batch-job-summary" style="display:none;">
+        <div class="summary-card">
+          <span>处理总数</span>
+          <strong id="phase2-batch-summary-total">0</strong>
+        </div>
+        <div class="summary-card auto">
+          <span>JSON 合格</span>
+          <strong id="phase2-batch-summary-json">0</strong>
+        </div>
+        <div class="summary-card auto">
+          <span>自动落码</span>
+          <strong id="phase2-batch-summary-auto">0</strong>
+        </div>
+        <div class="summary-card review">
+          <span>建议/人工</span>
+          <strong id="phase2-batch-summary-review">0</strong>
+        </div>
+        <div class="summary-card unmatched">
+          <span>未匹配</span>
+          <strong id="phase2-batch-summary-unmatched">0</strong>
+        </div>
+        <div class="summary-card unmatched">
+          <span>模型错误</span>
+          <strong id="phase2-batch-summary-error">0</strong>
+        </div>
+      </div>
+      <div class="actions" id="phase2-batch-job-download-actions" style="display:none;">
+        <a class="download-link" id="phase2-batch-job-download-link" href="#">下载二期真实批量结果</a>
       </div>
     </section>
     {% endif %}
@@ -821,6 +905,97 @@
         const shouldStop = await refreshPhase2Job();
         if (shouldStop) {
           window.clearInterval(phase2Timer);
+        }
+      }, 2000);
+    }
+
+    const phase2BatchJobCard = document.getElementById('phase2-batch-job-card');
+    if (phase2BatchJobCard) {
+      const jobId = phase2BatchJobCard.dataset.phase2BatchJobId;
+      const statusEl = document.getElementById('phase2-batch-job-status');
+      const progressBarEl = document.getElementById('phase2-batch-job-progress-bar');
+      const progressTextEl = document.getElementById('phase2-batch-job-progress-text');
+      const updatedAtEl = document.getElementById('phase2-batch-job-updated-at');
+      const messageEl = document.getElementById('phase2-batch-job-message');
+      const errorEl = document.getElementById('phase2-batch-job-error');
+      const summaryEl = document.getElementById('phase2-batch-job-summary');
+      const totalEl = document.getElementById('phase2-batch-summary-total');
+      const jsonEl = document.getElementById('phase2-batch-summary-json');
+      const autoEl = document.getElementById('phase2-batch-summary-auto');
+      const reviewEl = document.getElementById('phase2-batch-summary-review');
+      const unmatchedEl = document.getElementById('phase2-batch-summary-unmatched');
+      const modelErrorEl = document.getElementById('phase2-batch-summary-error');
+      const downloadActionsEl = document.getElementById('phase2-batch-job-download-actions');
+      const downloadLinkEl = document.getElementById('phase2-batch-job-download-link');
+
+      const refreshPhase2BatchJob = async () => {
+        const response = await fetch(`/jobs/${jobId}`);
+        if (!response.ok) {
+          return false;
+        }
+        const payload = await response.json();
+        if (statusEl) {
+          statusEl.textContent = payload.status || '-';
+        }
+        if (progressBarEl) {
+          progressBarEl.style.width = `${payload.progress || 0}%`;
+        }
+        if (progressTextEl) {
+          progressTextEl.textContent = `${payload.progress || 0}%`;
+        }
+        if (updatedAtEl) {
+          updatedAtEl.textContent = payload.updated_at || '-';
+        }
+        if (messageEl) {
+          messageEl.textContent = payload.message || '';
+        }
+        if (payload.summary && summaryEl) {
+          summaryEl.style.display = 'grid';
+          if (totalEl) {
+            totalEl.textContent = payload.summary.total_count || 0;
+          }
+          if (jsonEl) {
+            jsonEl.textContent = payload.summary.json_valid_count || 0;
+          }
+          if (autoEl) {
+            autoEl.textContent = payload.summary.auto_code_count || 0;
+          }
+          if (reviewEl) {
+            reviewEl.textContent = payload.summary.suggested_or_review_count || 0;
+          }
+          if (unmatchedEl) {
+            unmatchedEl.textContent = payload.summary.unmatched_count || 0;
+          }
+          if (modelErrorEl) {
+            modelErrorEl.textContent = payload.summary.model_error_count || 0;
+          }
+        }
+        if (payload.status === 'completed') {
+          if (downloadActionsEl) {
+            downloadActionsEl.style.display = 'flex';
+          }
+          if (downloadLinkEl) {
+            downloadLinkEl.href = `/phase2/batch/download/${jobId}`;
+          }
+          if (errorEl) {
+            errorEl.style.display = 'none';
+          }
+          return true;
+        }
+        if (payload.status === 'failed') {
+          if (errorEl) {
+            errorEl.textContent = payload.error || payload.message || '二期真实批量任务失败';
+            errorEl.style.display = 'block';
+          }
+          return true;
+        }
+        return false;
+      };
+
+      const phase2BatchTimer = window.setInterval(async () => {
+        const shouldStop = await refreshPhase2BatchJob();
+        if (shouldStop) {
+          window.clearInterval(phase2BatchTimer);
         }
       }, 2000);
     }
