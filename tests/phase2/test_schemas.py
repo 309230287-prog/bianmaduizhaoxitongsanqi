@@ -207,6 +207,8 @@ class Phase2SchemaTests(unittest.TestCase):
                         "客户未表达无糖系列，不能脑补",
                         "候选商品列表为空，无法进行语义匹配。",
                         "无候选商品，无法评估风险。",
+                        "名称冲突",
+                        "分类冲突",
                         "name_partial_match",
                     ],
                     summary="需要人工审核。",
@@ -220,6 +222,7 @@ class Phase2SchemaTests(unittest.TestCase):
                 "单位不一致",
                 "multiple candidates with identical matches may indicate duplicates or similar products",
                 "规格描述不直接匹配",
+                "多个候选匹配",
             ],
             evidence_summary="需要人工确认。",
             manual_review_reason="证据不足。",
@@ -234,6 +237,8 @@ class Phase2SchemaTests(unittest.TestCase):
                 RiskFlag.CANDIDATE_POOL_MISSING_EVIDENCE,
                 RiskFlag.CANDIDATE_POOL_MISSING_EVIDENCE,
                 RiskFlag.CORE_NAME_UNCERTAIN,
+                RiskFlag.CORE_NAME_UNCERTAIN,
+                RiskFlag.CORE_NAME_UNCERTAIN,
             ],
         )
         self.assertEqual(
@@ -244,6 +249,7 @@ class Phase2SchemaTests(unittest.TestCase):
                 RiskFlag.UNIT_CONFLICT,
                 RiskFlag.MULTIPLE_VALID_CANDIDATES,
                 RiskFlag.SPEC_CONFLICT,
+                RiskFlag.MULTIPLE_VALID_CANDIDATES,
             ],
         )
 

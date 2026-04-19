@@ -5,11 +5,11 @@
 
 ## Category Counts
 - `invalid_json`: 0
-- `schema_validation_error`: 1
+- `schema_validation_error`: 0
 - `business_rule_validation_error`: 0
 - `model_call_error`: 1
 - `empty_output`: 0
-- `schema_valid_after_normalization`: 8
+- `schema_valid_after_normalization`: 9
 - `unknown`: 0
 
 ## Acceptance Summary
@@ -20,10 +20,10 @@
 - `unsafe_auto_code_count`: 1
 
 ## Current Parser Summary
-- `current_parser_valid_count`: 8
-- `current_status_match_count`: 6
+- `current_parser_valid_count`: 9
+- `current_status_match_count`: 7
 - `current_selected_code_match_count`: 2
-- `current_selected_code_mismatch_count`: 4
+- `current_selected_code_mismatch_count`: 5
 - `current_unsafe_auto_code_count`: 0
 
 ## Representative Samples
@@ -31,7 +31,7 @@
 - None
 
 ### schema_validation_error
-- `GS0012` (package_risk): 字段校验失败：candidate_assessments.4.risk_flags.0 / enum
+- None
 
 ### business_rule_validation_error
 - None

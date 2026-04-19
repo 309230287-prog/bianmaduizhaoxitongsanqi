@@ -44,9 +44,12 @@ RISK_FLAG_ALIASES: dict[str, RiskFlag] = {
     "单位冲突": RiskFlag.UNIT_CONFLICT,
     "multiple_candidates": RiskFlag.MULTIPLE_VALID_CANDIDATES,
     "多个候选": RiskFlag.MULTIPLE_VALID_CANDIDATES,
+    "多个候选匹配": RiskFlag.MULTIPLE_VALID_CANDIDATES,
     "insufficient_info": RiskFlag.INSUFFICIENT_CUSTOMER_INFO,
     "信息不足": RiskFlag.INSUFFICIENT_CUSTOMER_INFO,
     "name_partial_match": RiskFlag.CORE_NAME_UNCERTAIN,
+    "名称冲突": RiskFlag.CORE_NAME_UNCERTAIN,
+    "分类冲突": RiskFlag.CORE_NAME_UNCERTAIN,
 }
 
 
