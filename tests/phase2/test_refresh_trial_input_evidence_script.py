@@ -11,7 +11,7 @@ if str(SRC) not in sys.path:
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.phase2_refresh_trial_input_evidence import refresh_trial_input_evidence  # noqa: E402
+from scripts.phase2_refresh_trial_input_evidence import parse_args, refresh_trial_input_evidence  # noqa: E402
 
 
 class Phase2RefreshTrialInputEvidenceScriptTests(unittest.TestCase):
@@ -63,6 +63,7 @@ class Phase2RefreshTrialInputEvidenceScriptTests(unittest.TestCase):
         self.assertIn("1*6*1.9l", evidence["spec_tokens"])
         self.assertEqual(evidence["unit"], "件")
         self.assertIn("spec_in_product_text", evidence["match_sources"])
+        self.assertNotIn("raw_fields", refreshed["payload"]["candidate_products"][0]["product"])
 
     def test_refresh_reranks_candidates_with_current_candidate_generation_logic(self) -> None:
         legacy_row = {
@@ -124,6 +125,11 @@ class Phase2RefreshTrialInputEvidenceScriptTests(unittest.TestCase):
         self.assertEqual(candidates[0]["candidate_id"], "K000001")
         self.assertEqual(candidates[0]["product"]["code"], "C33870454")
         self.assertIn("spec_in_product_name", candidates[0]["candidate_evidence"]["match_sources"])
+
+    def test_parse_args_defaults_to_ten_candidate_limit(self) -> None:
+        args = parse_args([])
+
+        self.assertEqual(args.candidate_limit, 10)
 
 
 if __name__ == "__main__":

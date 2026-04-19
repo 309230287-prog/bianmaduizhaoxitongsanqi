@@ -78,12 +78,22 @@ class ModelInputPayloadTests(unittest.TestCase):
 
         self.assertEqual(payload["customer_record"]["raw_fields"]["备注"], "客户原表备注不能丢")
         self.assertEqual(payload["customer_record"]["mapped_fields"]["spec"], "1*12*500ml")
-        self.assertEqual(
-            payload["candidate_products"][0]["product"]["raw_fields"]["商品编码"],
-            "C33882536",
-        )
+        self.assertNotIn("raw_fields", payload["candidate_products"][0]["product"])
         self.assertIn("spec_partial_match", payload["candidate_products"][0]["candidate_sources"])
         self.assertEqual(payload["applicable_memories"][0]["memory_id"], "M000001")
+
+    def test_candidate_payload_sent_to_model_is_compact(self) -> None:
+        payload = build_model_input_payload(
+            record=self._record(),
+            candidates=[self._candidate()],
+            applicable_memories=[],
+        )
+
+        product_payload = payload["candidate_products"][0]["product"]
+
+        self.assertEqual(product_payload["code"], "C33882536")
+        self.assertEqual(product_payload["name"], "海天金标生抽500ml")
+        self.assertNotIn("raw_fields", product_payload)
 
     def test_payload_includes_structured_candidate_evidence_for_model(self) -> None:
         candidate = self._candidate().model_copy(

@@ -76,6 +76,14 @@ def _dump_model(model: BaseModel) -> dict[str, Any]:
     return model.model_dump(mode="json")
 
 
+def dump_candidate_for_model(candidate: CandidateItem) -> dict[str, Any]:
+    payload = _dump_model(candidate)
+    product = dict(payload.get("product") or {})
+    product.pop("raw_fields", None)
+    payload["product"] = product
+    return payload
+
+
 def build_model_input_payload(
     record: CustomerRecord,
     candidates: Iterable[CandidateItem],
@@ -85,7 +93,7 @@ def build_model_input_payload(
         "task": "phase2_product_semantic_translation",
         "version": "0.1",
         "customer_record": _dump_model(record),
-        "candidate_products": [_dump_model(candidate) for candidate in candidates],
+        "candidate_products": [dump_candidate_for_model(candidate) for candidate in candidates],
         "applicable_memories": [
             _dump_model(memory) for memory in (applicable_memories or [])
         ],

@@ -12,10 +12,11 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from product_matcher_phase2.candidate_generation import generate_candidates  # noqa: E402
+from product_matcher_phase2.model_io import dump_candidate_for_model  # noqa: E402
 from product_matcher_phase2.schemas import CandidateItem, CustomerRecord  # noqa: E402
 
 
-def _refresh_row(row: dict[str, Any]) -> tuple[dict[str, Any], int]:
+def _refresh_row(row: dict[str, Any], candidate_limit: int) -> tuple[dict[str, Any], int]:
     refreshed = dict(row)
     payload = dict(refreshed.get("payload") or {})
     record = CustomerRecord.model_validate(payload.get("customer_record") or {})
@@ -25,11 +26,11 @@ def _refresh_row(row: dict[str, Any]) -> tuple[dict[str, Any], int]:
         for candidate_payload in payload.get("candidate_products") or []
     ]
     refreshed_candidates = [
-        candidate.model_dump(mode="json")
+        dump_candidate_for_model(candidate)
         for candidate in generate_candidates(
             record,
             [candidate.product for candidate in legacy_candidates],
-            limit=len(legacy_candidates),
+            limit=min(len(legacy_candidates), candidate_limit),
         )
     ]
 
@@ -38,7 +39,12 @@ def _refresh_row(row: dict[str, Any]) -> tuple[dict[str, Any], int]:
     return refreshed, len(refreshed_candidates)
 
 
-def refresh_trial_input_evidence(input_path: str | Path, output_path: str | Path) -> dict[str, int]:
+def refresh_trial_input_evidence(
+    input_path: str | Path,
+    output_path: str | Path,
+    *,
+    candidate_limit: int = 10,
+) -> dict[str, int]:
     source = Path(input_path)
     target = Path(output_path)
     rows = 0
@@ -48,7 +54,7 @@ def refresh_trial_input_evidence(input_path: str | Path, output_path: str | Path
     for line in source.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
-        refreshed_row, candidate_count = _refresh_row(json.loads(line))
+        refreshed_row, candidate_count = _refresh_row(json.loads(line), candidate_limit)
         rows += 1
         candidates += candidate_count
         output_lines.append(json.dumps(refreshed_row, ensure_ascii=False, sort_keys=True))
@@ -70,12 +76,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=str(ROOT / "samples" / "phase2" / "model_trial_inputs_v0.2.jsonl"),
         help="Path to write refreshed JSONL inputs.",
     )
+    parser.add_argument(
+        "--candidate-limit",
+        type=int,
+        default=10,
+        help="Maximum number of ranked candidates to keep per trial row.",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    summary = refresh_trial_input_evidence(args.input, args.output)
+    summary = refresh_trial_input_evidence(args.input, args.output, candidate_limit=args.candidate_limit)
     print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
     print(f"输入证据已刷新：{args.output}")
     return 0
