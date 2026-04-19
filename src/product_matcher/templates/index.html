@@ -248,6 +248,10 @@
           <span>自动落码</span>
           <strong id="phase2-summary-auto">0</strong>
         </div>
+        <div class="summary-card unmatched">
+          <span>危险自动落码</span>
+          <strong id="phase2-summary-unsafe-auto">0</strong>
+        </div>
       </div>
       <div class="actions" id="phase2-job-download-actions" style="display:none;">
         <a class="download-link" id="phase2-job-download-link" href="#">下载二期试跑结果</a>
@@ -700,6 +704,7 @@
       const codeMatchEl = document.getElementById('phase2-summary-code-match');
       const codeMismatchEl = document.getElementById('phase2-summary-code-mismatch');
       const autoEl = document.getElementById('phase2-summary-auto');
+      const unsafeAutoEl = document.getElementById('phase2-summary-unsafe-auto');
       const downloadActionsEl = document.getElementById('phase2-job-download-actions');
       const downloadLinkEl = document.getElementById('phase2-job-download-link');
 
@@ -743,6 +748,9 @@
           }
           if (autoEl) {
             autoEl.textContent = payload.summary.auto_code_count || 0;
+          }
+          if (unsafeAutoEl) {
+            unsafeAutoEl.textContent = payload.summary.unsafe_auto_code_count || 0;
           }
         }
         if (payload.status === 'completed') {

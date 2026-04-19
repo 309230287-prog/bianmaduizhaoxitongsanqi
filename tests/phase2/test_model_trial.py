@@ -156,6 +156,50 @@ class ModelTrialTests(unittest.TestCase):
         self.assertEqual(summary["status_match_count"], 1)
         self.assertEqual(summary["selected_code_match_count"], 1)
         self.assertEqual(summary["selected_code_mismatch_count"], 0)
+        self.assertEqual(summary["unsafe_auto_code_count"], 0)
+
+    def test_summarize_trial_results_counts_unsafe_auto_code(self) -> None:
+        manual_case = ModelTrialCase(
+            sample_id="GS0009",
+            sample_group="manual_review",
+            expected_company_code="",
+            expected_result_status="manual_review",
+            payload={
+                "candidate_products": [
+                    {
+                        "candidate_id": "K000001",
+                        "product": {
+                            "code": "C000001",
+                            "name": "候选商品",
+                        },
+                    }
+                ]
+            },
+        )
+
+        def call_model(_payload):
+            return {
+                "customer_semantic_summary": "错误地强行自动落码。",
+                "candidate_assessments": [
+                    {
+                        "candidate_id": "K000001",
+                        "same_business_identity": True,
+                        "risk_flags": [],
+                        "summary": "模型误判为可自动。",
+                    }
+                ],
+                "selected_candidate_id": "K000001",
+                "result_status": "strong_auto_code",
+                "risk_flags": [],
+                "evidence_summary": "证据不足仍自动。",
+                "manual_review_reason": "",
+                "can_auto_code": True,
+            }
+
+        summary = summarize_trial_results(run_trial_cases([manual_case], call_model))
+
+        self.assertEqual(summary["auto_code_count"], 1)
+        self.assertEqual(summary["unsafe_auto_code_count"], 1)
 
 
 if __name__ == "__main__":

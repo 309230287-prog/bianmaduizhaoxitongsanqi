@@ -201,6 +201,7 @@ class AppFlowTests(unittest.TestCase):
                     "selected_code_match_count": 1,
                     "selected_code_mismatch_count": 1,
                     "auto_code_count": 0,
+                    "unsafe_auto_code_count": 1,
                 }
 
             with patch.object(app_module, "PHASE2_TRIAL_INPUT_FILE", trial_input_path), \
@@ -226,6 +227,7 @@ class AppFlowTests(unittest.TestCase):
                 self.assertIn("二期语义试跑任务", response.text)
                 self.assertIn("编码命中", response.text)
                 self.assertIn("编码错选", response.text)
+                self.assertIn("危险自动落码", response.text)
                 job_id = re.search(r'data-phase2-job-id="([^"]+)"', response.text).group(1)
 
                 payload = self._wait_for_phase2_job(jobs_dir, job_id)
@@ -235,6 +237,7 @@ class AppFlowTests(unittest.TestCase):
                 self.assertEqual(payload["summary"]["json_valid_count"], 2)
                 self.assertEqual(payload["summary"]["selected_code_match_count"], 1)
                 self.assertEqual(payload["summary"]["selected_code_mismatch_count"], 1)
+                self.assertEqual(payload["summary"]["unsafe_auto_code_count"], 1)
                 self.assertEqual(captured["input_path"], trial_input_path)
                 self.assertEqual(captured["limit"], 2)
                 self.assertEqual(captured["runtime_settings"]["production_model_name"], "deepseek-chat")

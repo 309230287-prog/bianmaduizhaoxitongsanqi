@@ -175,6 +175,7 @@ def summarize_trial_results(results: Iterable[ModelTrialResult]) -> dict[str, An
     )
     selected_code_mismatch_count = len(code_evaluated_results) - selected_code_match_count
     auto_code_count = sum(1 for result in result_list if result.can_auto_code)
+    unsafe_auto_code_count = sum(1 for result in result_list if _is_unsafe_auto_code(result))
     return {
         "total_count": total_count,
         "json_valid_count": json_valid_count,
@@ -184,4 +185,15 @@ def summarize_trial_results(results: Iterable[ModelTrialResult]) -> dict[str, An
         "selected_code_match_count": selected_code_match_count,
         "selected_code_mismatch_count": selected_code_mismatch_count,
         "auto_code_count": auto_code_count,
+        "unsafe_auto_code_count": unsafe_auto_code_count,
     }
+
+
+def _is_unsafe_auto_code(result: ModelTrialResult) -> bool:
+    if not result.can_auto_code:
+        return False
+    if result.expected_result_status != ResultStatus.STRONG_AUTO_CODE.value:
+        return True
+    if result.expected_company_code and not result.selected_code_matches_expected:
+        return True
+    return False
