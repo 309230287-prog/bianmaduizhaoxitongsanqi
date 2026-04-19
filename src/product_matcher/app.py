@@ -1203,7 +1203,7 @@ def _run_phase2_batch_job(
             progress=92,
             message="二期批量判断完成，正在生成 Excel 结果。",
         )
-        output_filename = f"phase2_batch_results_{job_id[:8]}.xlsx"
+        output_filename = f"编码对照表_{job_id[:8]}.xlsx"
         output_path = job_status_service.EXPORT_OUTPUT_DIR / f"{job_id}_{output_filename}"
         write_phase2_batch_results_xlsx(rows, output_path)
         summary = summarize_batch_results(rows)

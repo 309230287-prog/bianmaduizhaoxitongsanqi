@@ -86,7 +86,7 @@ class Phase2BatchRunnerTests(unittest.TestCase):
         self.assertEqual(rows[0].selected_product_name, "海天金标生抽500ml")
         self.assertTrue(rows[0].result.can_auto_code)
 
-    def test_write_phase2_batch_results_xlsx_exports_review_columns(self) -> None:
+    def test_write_phase2_batch_results_xlsx_exports_human_readable_code_mapping_table(self) -> None:
         def call_model(_payload):
             return json.dumps(
                 {
@@ -108,21 +108,30 @@ class Phase2BatchRunnerTests(unittest.TestCase):
             write_phase2_batch_results_xlsx(rows, output_path)
 
             workbook = load_workbook(output_path, read_only=True)
-            worksheet = workbook["phase2_batch_results"]
+            worksheet = workbook["编码对照表"]
             headers = [cell.value for cell in worksheet[1]]
             values = [cell.value for cell in worksheet[2]]
             workbook.close()
 
         self.assertIn("客户行号", headers)
-        self.assertIn("二期判断状态", headers)
-        self.assertIn("是否自动落码", headers)
-        self.assertIn("建议我司编码", headers)
-        self.assertIn("建议我司商品名称", headers)
-        self.assertIn("证据说明", headers)
+        self.assertIn("客户记录编号", headers)
+        self.assertIn("客户商品名称", headers)
+        self.assertIn("客户规格", headers)
+        self.assertIn("客户单位", headers)
+        self.assertIn("处理结论", headers)
+        self.assertIn("能否自动落码", headers)
+        self.assertIn("对照我司编码", headers)
+        self.assertIn("对照我司商品名称", headers)
+        self.assertIn("人工复核说明", headers)
+        self.assertIn("匹配依据", headers)
+        self.assertTrue(all(not any("A" <= char <= "Z" or "a" <= char <= "z" for char in header) for header in headers))
         self.assertEqual(values[headers.index("客户行号")], 2)
-        self.assertEqual(values[headers.index("二期判断状态")], "suggested_code")
-        self.assertEqual(values[headers.index("建议我司编码")], "C33882536")
-        self.assertEqual(values[headers.index("建议我司商品名称")], "海天金标生抽500ml")
+        self.assertEqual(values[headers.index("处理结论")], "建议编码")
+        self.assertEqual(values[headers.index("能否自动落码")], "否，需人工复核")
+        self.assertEqual(values[headers.index("对照我司编码")], "C33882536")
+        self.assertEqual(values[headers.index("对照我司商品名称")], "海天金标生抽500ml")
+        self.assertEqual(values[headers.index("人工复核说明")], "存在多个相似候选。")
+        self.assertEqual(values[headers.index("匹配依据")], "可建议，但需要人工确认。")
 
     def test_summarize_batch_results_counts_live_batch_without_golden_expectations(self) -> None:
         def call_model(_payload):

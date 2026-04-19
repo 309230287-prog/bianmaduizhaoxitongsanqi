@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill
 
 from product_matcher_phase2.candidate_generation import generate_candidates
 from product_matcher_phase2.model_io import build_model_input_payload
@@ -96,29 +97,28 @@ def summarize_batch_results(rows: Iterable[Phase2BatchRow]) -> dict[str, Any]:
 
 PHASE2_BATCH_HEADERS = [
     "客户行号",
-    "客户记录ID",
+    "客户记录编号",
     "客户编码",
     "客户商品名称",
     "客户规格",
     "客户单位",
     "客户品牌",
-    "二期判断状态",
-    "是否自动落码",
-    "建议我司编码",
-    "建议我司商品名称",
+    "处理结论",
+    "能否自动落码",
+    "对照我司编码",
+    "对照我司商品名称",
     "首候选我司编码",
     "首候选商品名称",
-    "证据说明",
-    "人工审核原因",
-    "模型错误",
-    "模型原始输出",
+    "人工复核说明",
+    "匹配依据",
+    "异常说明",
 ]
 
 
 def write_phase2_batch_results_xlsx(rows: Iterable[Phase2BatchRow], path: str | Path) -> None:
     workbook = Workbook()
     worksheet = workbook.active
-    worksheet.title = "phase2_batch_results"
+    worksheet.title = "编码对照表"
     worksheet.append(PHASE2_BATCH_HEADERS)
     for row in rows:
         mapped = row.customer_record.mapped_fields
@@ -132,23 +132,62 @@ def write_phase2_batch_results_xlsx(rows: Iterable[Phase2BatchRow], path: str | 
                 mapped.get("spec", ""),
                 mapped.get("unit", ""),
                 mapped.get("brand", ""),
-                result.parsed_result_status,
-                "是" if result.can_auto_code else "否",
+                _human_status(result.parsed_result_status),
+                "是，可自动落码" if result.can_auto_code else "否，需人工复核",
                 result.selected_company_code,
                 row.selected_product_name,
                 row.top_candidate_code,
                 row.top_candidate_name,
-                result.evidence_summary,
                 result.manual_review_reason,
+                result.evidence_summary,
                 result.error_message,
-                result.raw_model_output,
             ]
         )
+    _style_code_mapping_sheet(worksheet)
 
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     workbook.save(output_path)
     workbook.close()
+
+
+def _human_status(status: str) -> str:
+    return {
+        ResultStatus.STRONG_AUTO_CODE.value: "可自动落码",
+        ResultStatus.WEAK_AUTO_CODE.value: "可自动落码",
+        ResultStatus.SUGGESTED_CODE.value: "建议编码",
+        ResultStatus.MANUAL_REVIEW.value: "需人工审核",
+        ResultStatus.UNMATCHED.value: "未匹配",
+        ResultStatus.MODEL_ERROR.value: "模型异常",
+    }.get(status, "需人工审核")
+
+
+def _style_code_mapping_sheet(worksheet) -> None:
+    header_fill = PatternFill(fill_type="solid", fgColor="F4E6D4")
+    for cell in worksheet[1]:
+        cell.font = Font(bold=True)
+        cell.fill = header_fill
+    widths = {
+        "A": 10,
+        "B": 18,
+        "C": 16,
+        "D": 32,
+        "E": 18,
+        "F": 10,
+        "G": 14,
+        "H": 14,
+        "I": 16,
+        "J": 18,
+        "K": 34,
+        "L": 18,
+        "M": 34,
+        "N": 36,
+        "O": 40,
+        "P": 28,
+    }
+    for column, width in widths.items():
+        worksheet.column_dimensions[column].width = width
+    worksheet.freeze_panes = "A2"
 
 
 def _build_batch_row(
