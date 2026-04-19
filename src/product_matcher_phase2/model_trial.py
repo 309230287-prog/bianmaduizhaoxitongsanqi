@@ -123,6 +123,14 @@ def _call_error_decision(message: str) -> ModelDecision:
 
 
 def apply_payload_safety_gate(payload: dict[str, Any], decision: ModelDecision) -> ModelDecision:
+    if (
+        not decision.can_auto_code
+        and not decision.selected_candidate_id
+        and decision.result_status
+        in {ResultStatus.SUGGESTED_CODE, ResultStatus.MANUAL_REVIEW}
+    ):
+        decision = _add_top_candidate_suggestion(payload, decision)
+
     if not decision.can_auto_code or not decision.selected_candidate_id:
         return decision
 
@@ -189,6 +197,25 @@ def _downgrade_auto_decision(
         part for part in [str(downgraded.get("evidence_summary", "")).strip(), reason] if part
     )
     return ModelDecision.model_validate(downgraded)
+
+
+def _add_top_candidate_suggestion(payload: dict[str, Any], decision: ModelDecision) -> ModelDecision:
+    candidates = payload.get("candidate_products") or []
+    if not candidates:
+        return decision
+
+    first_candidate = candidates[0]
+    candidate_id = str(first_candidate.get("candidate_id", "")).strip()
+    if not candidate_id:
+        return decision
+
+    updated = decision.model_dump(mode="json")
+    updated["selected_candidate_id"] = candidate_id
+    note = f"系统补充建议候选：{candidate_id}，仅供人工审核参考，不自动落码。"
+    updated["evidence_summary"] = "；".join(
+        part for part in [str(updated.get("evidence_summary", "")).strip(), note] if part
+    )
+    return ModelDecision.model_validate(updated)
 
 
 def _spec_tokens_match(customer_tokens: set[str], candidate_tokens: set[str]) -> bool:

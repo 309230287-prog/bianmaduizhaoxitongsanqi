@@ -22,8 +22,8 @@
 ## Current Parser Summary
 - `current_parser_valid_count`: 10
 - `current_status_match_count`: 8
-- `current_selected_code_match_count`: 4
-- `current_selected_code_mismatch_count`: 4
+- `current_selected_code_match_count`: 8
+- `current_selected_code_mismatch_count`: 0
 - `current_unsafe_auto_code_count`: 0
 
 ## Representative Samples

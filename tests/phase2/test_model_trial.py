@@ -337,6 +337,42 @@ class ModelTrialTests(unittest.TestCase):
         self.assertFalse(result.can_auto_code)
         self.assertIn("多个候选", result.manual_review_reason)
 
+    def test_run_trial_cases_adds_top_candidate_suggestion_for_manual_review_without_auto_code(self) -> None:
+        case = ModelTrialCase(
+            sample_id="SUG001",
+            sample_group="manual_review",
+            expected_company_code="C000001",
+            expected_result_status="manual_review",
+            payload={
+                "candidate_products": [
+                    {
+                        "candidate_id": "K000001",
+                        "candidate_evidence": {"match_sources": ["name_exact"]},
+                        "product": {"code": "C000001", "name": "建议候选"},
+                    }
+                ],
+            },
+        )
+
+        def call_model(_payload):
+            return {
+                "customer_semantic_summary": "需要人工审核。",
+                "candidate_assessments": [],
+                "selected_candidate_id": None,
+                "result_status": "manual_review",
+                "risk_flags": ["insufficient_customer_info"],
+                "evidence_summary": "模型未选择候选。",
+                "manual_review_reason": "需要人工确认。",
+                "can_auto_code": False,
+            }
+
+        result = run_trial_cases([case], call_model)[0]
+
+        self.assertEqual(result.parsed_result_status, "manual_review")
+        self.assertEqual(result.selected_candidate_id, "K000001")
+        self.assertEqual(result.selected_company_code, "C000001")
+        self.assertFalse(result.can_auto_code)
+
     def _strong_auto_model(self, _payload):
         return {
             "customer_semantic_summary": "模型认为可自动。",
