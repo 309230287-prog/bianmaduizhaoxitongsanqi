@@ -57,7 +57,10 @@ def save_job_output(job_id: str, filename: str, content: bytes) -> Path:
 
 def _write_job(payload: dict[str, Any]) -> None:
     JOBS_DIR.mkdir(parents=True, exist_ok=True)
-    _job_file(payload["job_id"]).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    path = _job_file(payload["job_id"])
+    temporary_path = path.with_suffix(".json.tmp")
+    temporary_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary_path.replace(path)
 
 
 def _job_file(job_id: str) -> Path:

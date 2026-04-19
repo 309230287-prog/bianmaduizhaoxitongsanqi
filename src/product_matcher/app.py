@@ -10,6 +10,7 @@ from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from openpyxl import Workbook
 
 from product_matcher.models import (
     STANDARD_FIELDS,
@@ -65,6 +66,9 @@ PHASE2_TRIAL_INPUT_FILE = PROJECT_ROOT / "samples" / "phase2" / "model_trial_inp
 PHASE2_TRIAL_DIAGNOSTICS_FILE = PROJECT_ROOT / "samples" / "phase2" / "model_trial_diagnostics_deepseek_v0.1.md"
 PHASE2_BATCH_CUSTOMER_FILE = PROJECT_ROOT / "客户商品库.xlsx"
 PHASE2_BATCH_COMPANY_FILE = PROJECT_ROOT / "我司商品库.xlsx"
+PHASE2_SOURCE_DIR = RUNTIME_DIR / "phase2_sources"
+PHASE2_RUNTIME_COMPANY_FILE = PHASE2_SOURCE_DIR / "current_company_library.xlsx"
+PHASE2_RUNTIME_CUSTOMER_FILE = PHASE2_SOURCE_DIR / "current_customer_library.xlsx"
 
 app = FastAPI(
     title="商品智能匹配系统 MVP",
@@ -401,6 +405,63 @@ async def start_phase2_trial(
     return templates.TemplateResponse(request, "index.html", context)
 
 
+@app.post("/phase2/source/company", response_class=HTMLResponse)
+async def upload_phase2_company_library(
+    request: Request,
+    company_library_file: UploadFile = File(...),
+) -> HTMLResponse:
+    await _save_phase2_upload(company_library_file, PHASE2_RUNTIME_COMPANY_FILE)
+    log_action(
+        "phase2_company_library_uploaded",
+        request_id=request.state.request_id,
+        filename=company_library_file.filename,
+        saved_path=str(PHASE2_RUNTIME_COMPANY_FILE),
+    )
+    context = _build_context(
+        show_phase2=True,
+        phase2_source_message="我司商品库已更新，后续编码对照会优先使用这份文件。",
+    )
+    return templates.TemplateResponse(request, "index.html", context)
+
+
+@app.post("/phase2/source/customer", response_class=HTMLResponse)
+async def upload_phase2_customer_library(
+    request: Request,
+    customer_library_file: UploadFile = File(...),
+) -> HTMLResponse:
+    await _save_phase2_upload(customer_library_file, PHASE2_RUNTIME_CUSTOMER_FILE)
+    log_action(
+        "phase2_customer_library_uploaded",
+        request_id=request.state.request_id,
+        filename=customer_library_file.filename,
+        saved_path=str(PHASE2_RUNTIME_CUSTOMER_FILE),
+    )
+    context = _build_context(
+        show_phase2=True,
+        phase2_source_message="客户商品库已导入，后续编码对照会优先使用这份文件。",
+    )
+    return templates.TemplateResponse(request, "index.html", context)
+
+
+@app.post("/phase2/source/customer/manual", response_class=HTMLResponse)
+async def save_phase2_customer_manual_input(
+    request: Request,
+    manual_customer_items: str = Form(""),
+) -> HTMLResponse:
+    item_count = _write_manual_customer_workbook(manual_customer_items, PHASE2_RUNTIME_CUSTOMER_FILE)
+    log_action(
+        "phase2_customer_manual_input_saved",
+        request_id=request.state.request_id,
+        item_count=item_count,
+        saved_path=str(PHASE2_RUNTIME_CUSTOMER_FILE),
+    )
+    context = _build_context(
+        show_phase2=True,
+        phase2_source_message=f"手工客户商品已生成，共 {item_count} 条，后续编码对照会优先使用这些输入。",
+    )
+    return templates.TemplateResponse(request, "index.html", context)
+
+
 @app.post("/phase2/batch", response_class=HTMLResponse)
 async def start_phase2_batch(
     request: Request,
@@ -412,8 +473,8 @@ async def start_phase2_batch(
     phase2_batch_job = job_status_service.create_job(
         "phase2_batch",
         {
-            "customer_file": str(PHASE2_BATCH_CUSTOMER_FILE),
-            "company_file": str(PHASE2_BATCH_COMPANY_FILE),
+            "customer_file": str(_current_phase2_customer_file()),
+            "company_file": str(_current_phase2_company_file()),
             "row_limit": row_limit,
             "candidate_limit": candidate_limit,
         },
@@ -704,13 +765,16 @@ def _build_context(**overrides):
         "export_job": None,
         "show_phase2": False,
         "phase2_trial_input_path": str(PHASE2_TRIAL_INPUT_FILE),
-        "phase2_batch_customer_path": str(PHASE2_BATCH_CUSTOMER_FILE),
-        "phase2_batch_company_path": str(PHASE2_BATCH_COMPANY_FILE),
+        "phase2_batch_customer_path": str(_current_phase2_customer_file()),
+        "phase2_batch_company_path": str(_current_phase2_company_file()),
+        "phase2_runtime_customer_path": str(PHASE2_RUNTIME_CUSTOMER_FILE),
+        "phase2_runtime_company_path": str(PHASE2_RUNTIME_COMPANY_FILE),
         "phase2_trial_diagnostics": _load_phase2_trial_diagnostics_summary(),
         "phase2_trial_job": None,
         "phase2_trial_message": None,
         "phase2_batch_job": None,
         "phase2_batch_message": None,
+        "phase2_source_message": None,
     }
     base.update(overrides)
     return base
@@ -1051,6 +1115,48 @@ def _normalize_phase2_candidate_limit(candidate_limit: int) -> int:
     return min(candidate_limit, 20)
 
 
+def _current_phase2_company_file() -> Path:
+    return PHASE2_RUNTIME_COMPANY_FILE if PHASE2_RUNTIME_COMPANY_FILE.exists() else PHASE2_BATCH_COMPANY_FILE
+
+
+def _current_phase2_customer_file() -> Path:
+    return PHASE2_RUNTIME_CUSTOMER_FILE if PHASE2_RUNTIME_CUSTOMER_FILE.exists() else PHASE2_BATCH_CUSTOMER_FILE
+
+
+async def _save_phase2_upload(upload: UploadFile, destination: Path) -> None:
+    filename = upload.filename or ""
+    if not filename.lower().endswith(".xlsx"):
+        raise ValueError("请上传 Excel .xlsx 文件。")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(await upload.read())
+
+
+def _write_manual_customer_workbook(raw_text: str, destination: Path) -> int:
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "客户手工输入"
+    worksheet.append(["商品名称", "规格", "单位", "品牌", "编号", "类别", "备注"])
+    for index, line in enumerate(lines, start=1):
+        parts = [part.strip() for part in line.replace("，", "\t").replace(",", "\t").split("\t")]
+        parts = [part for part in parts if part]
+        worksheet.append(
+            [
+                parts[0] if parts else line,
+                parts[1] if len(parts) > 1 else "",
+                parts[2] if len(parts) > 2 else "",
+                parts[3] if len(parts) > 3 else "",
+                f"手工{index:04d}",
+                "手工输入",
+                line,
+            ]
+        )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    workbook.save(destination)
+    workbook.close()
+    return len(lines)
+
+
 def _start_phase2_trial_job(job_id: str, request_id: str, sample_limit: int) -> None:
     worker = Thread(
         target=_run_phase2_trial_job,
@@ -1161,10 +1267,12 @@ def _run_phase2_batch_job(
             progress=5,
             message="正在准备二期真实批量任务。",
         )
-        if not PHASE2_BATCH_CUSTOMER_FILE.exists():
-            raise FileNotFoundError(f"未找到客户商品库：{PHASE2_BATCH_CUSTOMER_FILE}")
-        if not PHASE2_BATCH_COMPANY_FILE.exists():
-            raise FileNotFoundError(f"未找到我司商品库：{PHASE2_BATCH_COMPANY_FILE}")
+        customer_file = _current_phase2_customer_file()
+        company_file = _current_phase2_company_file()
+        if not customer_file.exists():
+            raise FileNotFoundError(f"未找到客户商品库：{customer_file}")
+        if not company_file.exists():
+            raise FileNotFoundError(f"未找到我司商品库：{company_file}")
 
         runtime_settings, runtime_warning = _resolve_runtime_settings_for_pipeline()
         if not runtime_settings:
@@ -1176,8 +1284,8 @@ def _run_phase2_batch_job(
             progress=15,
             message="正在读取客户库和我司商品库。",
         )
-        customer_records = load_customer_records(PHASE2_BATCH_CUSTOMER_FILE)
-        company_products = load_company_products(PHASE2_BATCH_COMPANY_FILE)
+        customer_records = load_customer_records(customer_file)
+        company_products = load_company_products(company_file)
 
         job_status_service.update_job(
             job_id,

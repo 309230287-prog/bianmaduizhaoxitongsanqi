@@ -150,6 +150,73 @@ class AppFlowTests(unittest.TestCase):
         self.assertIn("最近二期诊断", response.text)
         self.assertIn("暂无诊断报告", response.text)
 
+    def test_phase2_workbench_has_company_customer_uploads_and_manual_input(self) -> None:
+        client = TestClient(app)
+
+        response = client.get("/phase2")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("数据源工作台", response.text)
+        self.assertIn("更新我司商品库", response.text)
+        self.assertIn('name="company_library_file"', response.text)
+        self.assertIn("上传客户商品库", response.text)
+        self.assertIn('name="customer_library_file"', response.text)
+        self.assertIn("手工输入客户商品", response.text)
+        self.assertIn('name="manual_customer_items"', response.text)
+
+    def test_phase2_source_uploads_and_manual_input_update_runtime_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            source_dir = tmp_path / "phase2_sources"
+            company_file = tmp_path / "company.xlsx"
+            customer_file = tmp_path / "customer.xlsx"
+            self._build_company_workbook(company_file)
+            self._build_customer_workbook(customer_file)
+            client = TestClient(app)
+
+            with patch.object(app_module, "PHASE2_SOURCE_DIR", source_dir), \
+                 patch.object(app_module, "PHASE2_RUNTIME_COMPANY_FILE", source_dir / "current_company_library.xlsx"), \
+                 patch.object(app_module, "PHASE2_RUNTIME_CUSTOMER_FILE", source_dir / "current_customer_library.xlsx"):
+                with company_file.open("rb") as handle:
+                    company_response = client.post(
+                        "/phase2/source/company",
+                        files={
+                            "company_library_file": (
+                                "company.xlsx",
+                                handle.read(),
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            )
+                        },
+                    )
+                self.assertEqual(company_response.status_code, 200)
+                self.assertIn("我司商品库已更新", company_response.text)
+                self.assertTrue((source_dir / "current_company_library.xlsx").exists())
+
+                with customer_file.open("rb") as handle:
+                    customer_response = client.post(
+                        "/phase2/source/customer",
+                        files={
+                            "customer_library_file": (
+                                "customer.xlsx",
+                                handle.read(),
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            )
+                        },
+                    )
+                self.assertEqual(customer_response.status_code, 200)
+                self.assertIn("客户商品库已导入", customer_response.text)
+                self.assertTrue((source_dir / "current_customer_library.xlsx").exists())
+
+                manual_response = client.post(
+                    "/phase2/source/customer/manual",
+                    data={
+                        "manual_customer_items": "海天金标生抽\t500ml\t瓶\n农夫山泉 550ml 瓶",
+                    },
+                )
+                self.assertEqual(manual_response.status_code, 200)
+                self.assertIn("手工客户商品已生成", manual_response.text)
+                self.assertTrue((source_dir / "current_customer_library.xlsx").exists())
+
     def test_home_can_save_openai_compatible_model_selection(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
@@ -331,9 +398,9 @@ class AppFlowTests(unittest.TestCase):
                 home = client.get("/phase2")
                 self.assertEqual(home.status_code, 200)
                 self.assertIn("怎么操作", home.text)
-                self.assertIn("1. 确认模型", home.text)
-                self.assertIn("2. 运行真实批量", home.text)
-                self.assertIn("3. 下载结果", home.text)
+                self.assertIn("1. 准备数据源", home.text)
+                self.assertIn("2. 确认模型", home.text)
+                self.assertIn("3. 生成编码对照表", home.text)
                 self.assertIn("推荐先跑 1-3 条", home.text)
                 self.assertIn("10 条会明显更慢", home.text)
                 self.assertIn("二期真实批量落码", home.text)
