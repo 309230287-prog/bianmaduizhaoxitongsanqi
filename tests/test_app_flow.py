@@ -110,6 +110,7 @@ class AppFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("最近二期诊断", response.text)
         self.assertIn("schema_validation_error", response.text)
+        self.assertIn("schema_valid_after_normalization", response.text)
         self.assertIn("9", response.text)
         self.assertIn("model_call_error", response.text)
         self.assertIn("1", response.text)

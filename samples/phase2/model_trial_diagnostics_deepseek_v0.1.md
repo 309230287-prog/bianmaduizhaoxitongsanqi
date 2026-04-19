@@ -5,10 +5,11 @@
 
 ## Category Counts
 - `invalid_json`: 0
-- `schema_validation_error`: 9
+- `schema_validation_error`: 0
 - `business_rule_validation_error`: 0
 - `model_call_error`: 1
 - `empty_output`: 0
+- `schema_valid_after_normalization`: 9
 - `unknown`: 0
 
 ## Representative Samples
@@ -16,9 +17,7 @@
 - None
 
 ### schema_validation_error
-- `GS0001` (strong_auto): 字段校验失败：candidate_assessments.1.risk_flags.0 / enum
-- `GS0002` (strong_auto): 字段校验失败：candidate_assessments.1.risk_flags.0 / enum
-- `GS0006` (equivalence): 字段校验失败：candidate_assessments.2.risk_flags.0 / enum
+- None
 
 ### business_rule_validation_error
 - None
@@ -28,6 +27,11 @@
 
 ### empty_output
 - None
+
+### schema_valid_after_normalization
+- `GS0001` (strong_auto): 历史结果表标记失败，但原始输出经当前风险标记规范化后已通过模型校验
+- `GS0002` (strong_auto): 历史结果表标记失败，但原始输出经当前风险标记规范化后已通过模型校验
+- `GS0006` (equivalence): 历史结果表标记失败，但原始输出经当前风险标记规范化后已通过模型校验
 
 ### unknown
 - None

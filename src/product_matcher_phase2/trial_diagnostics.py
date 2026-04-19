@@ -9,7 +9,7 @@ from typing import Any, Iterable
 from openpyxl import load_workbook
 from pydantic import ValidationError
 
-from product_matcher_phase2.schemas import ModelDecision
+from product_matcher_phase2.schemas import ModelDecision, normalize_model_decision_payload
 
 
 DIAGNOSTIC_CATEGORIES = (
@@ -18,6 +18,7 @@ DIAGNOSTIC_CATEGORIES = (
     "business_rule_validation_error",
     "model_call_error",
     "empty_output",
+    "schema_valid_after_normalization",
     "unknown",
 )
 
@@ -113,7 +114,7 @@ def classify_trial_failure(row: TrialResultRow) -> tuple[str, str]:
         return "invalid_json", f"JSON 解析失败：{_shorten(str(exc))}"
 
     try:
-        ModelDecision.model_validate(payload)
+        ModelDecision.model_validate(normalize_model_decision_payload(payload))
     except ValidationError as exc:
         errors = exc.errors()
         if _has_business_rule_error(errors):
@@ -122,7 +123,7 @@ def classify_trial_failure(row: TrialResultRow) -> tuple[str, str]:
             return "schema_validation_error", _schema_reason(errors)
         return "unknown", _shorten(str(exc), 240)
 
-    return "unknown", "结果表显示失败，但原始输出可解析且通过模型校验"
+    return "schema_valid_after_normalization", "历史结果表标记失败，但原始输出经当前风险标记规范化后已通过模型校验"
 
 
 def render_trial_diagnostics_markdown(summary: dict[str, Any]) -> str:

@@ -151,6 +151,7 @@ class TrialDiagnosticsTests(unittest.TestCase):
                 "business_rule_validation_error": 1,
                 "model_call_error": 1,
                 "empty_output": 1,
+                "schema_valid_after_normalization": 0,
                 "unknown": 0,
             },
         )
@@ -170,6 +171,7 @@ class TrialDiagnosticsTests(unittest.TestCase):
                 "business_rule_validation_error": 0,
                 "model_call_error": 0,
                 "empty_output": 0,
+                "schema_valid_after_normalization": 0,
                 "unknown": 0,
             },
             "representative_samples": {
@@ -178,6 +180,7 @@ class TrialDiagnosticsTests(unittest.TestCase):
                 "business_rule_validation_error": [],
                 "model_call_error": [],
                 "empty_output": [],
+                "schema_valid_after_normalization": [],
                 "unknown": [],
             },
         }
@@ -194,7 +197,8 @@ class TrialDiagnosticsTests(unittest.TestCase):
         summary = diagnose_trial_results_xlsx(sample_path)
 
         self.assertEqual(summary["total_count"], 10)
-        self.assertEqual(summary["category_counts"]["schema_validation_error"], 9)
+        self.assertEqual(summary["category_counts"]["schema_validation_error"], 0)
+        self.assertEqual(summary["category_counts"]["schema_valid_after_normalization"], 9)
         self.assertEqual(summary["category_counts"]["model_call_error"], 1)
         self.assertEqual(summary["representative_samples"]["model_call_error"][0]["sample_id"], "GS0021")
 

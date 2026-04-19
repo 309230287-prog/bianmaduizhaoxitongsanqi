@@ -36,6 +36,7 @@ RISK_FLAG_ALIASES: dict[str, RiskFlag] = {
     "brand_mismatch": RiskFlag.BRAND_CONFLICT,
     "品牌冲突": RiskFlag.BRAND_CONFLICT,
     "spec_mismatch": RiskFlag.SPEC_CONFLICT,
+    "spec_missing": RiskFlag.INSUFFICIENT_CUSTOMER_INFO,
     "规格冲突": RiskFlag.SPEC_CONFLICT,
     "package_mismatch": RiskFlag.PACKAGE_CONFLICT,
     "包装冲突": RiskFlag.PACKAGE_CONFLICT,
@@ -45,6 +46,7 @@ RISK_FLAG_ALIASES: dict[str, RiskFlag] = {
     "多个候选": RiskFlag.MULTIPLE_VALID_CANDIDATES,
     "insufficient_info": RiskFlag.INSUFFICIENT_CUSTOMER_INFO,
     "信息不足": RiskFlag.INSUFFICIENT_CUSTOMER_INFO,
+    "name_partial_match": RiskFlag.CORE_NAME_UNCERTAIN,
 }
 
 
@@ -58,8 +60,37 @@ def _normalize_risk_flag_value(value: object) -> object:
         try:
             return RiskFlag(cleaned)
         except ValueError:
-            return value
+            inferred = _infer_risk_flag_from_text(cleaned)
+            return inferred if inferred is not None else value
     return value
+
+
+def _infer_risk_flag_from_text(text: str) -> RiskFlag | None:
+    if not text:
+        return None
+    if "候选商品列表为空" in text or "候选池为空" in text:
+        return RiskFlag.CANDIDATE_POOL_MISSING_EVIDENCE
+    if "多个候选" in text or "其他候选" in text or "混淆" in text:
+        return RiskFlag.MULTIPLE_VALID_CANDIDATES
+    if "未表达" in text or "脑补" in text:
+        return RiskFlag.NEEDS_UNSTATED_ASSUMPTION
+    if "备注" in text:
+        return RiskFlag.REMARK_CHANGES_IDENTITY
+    if "系列" in text or "等级" in text:
+        return RiskFlag.SERIES_OR_GRADE_CONFLICT
+    if "包装" in text or "包装层级" in text:
+        return RiskFlag.PACKAGE_CONFLICT
+    if "单位" in text:
+        return RiskFlag.UNIT_CONFLICT
+    if "规格缺失" in text or "规格信息不完整" in text:
+        return RiskFlag.INSUFFICIENT_CUSTOMER_INFO
+    if "规格" in text:
+        return RiskFlag.SPEC_CONFLICT
+    if "品牌" in text:
+        return RiskFlag.BRAND_CONFLICT
+    if "品名" in text or "分类" in text:
+        return RiskFlag.CORE_NAME_UNCERTAIN
+    return None
 
 
 def normalize_risk_flags_in_payload(payload: object) -> object:

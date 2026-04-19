@@ -195,6 +195,52 @@ class Phase2SchemaTests(unittest.TestCase):
                 can_auto_code=False,
             )
 
+    def test_model_decision_infers_risk_flags_from_common_model_phrases(self) -> None:
+        decision = ModelDecision(
+            customer_semantic_summary="候选存在复杂冲突。",
+            candidate_assessments=[
+                CandidateAssessment(
+                    candidate_id="K001",
+                    same_business_identity=False,
+                    risk_flags=[
+                        "单位和规格冲突可能表示不同包装层级或产品",
+                        "客户未表达无糖系列，不能脑补",
+                        "候选商品列表为空，无法进行语义匹配。",
+                        "name_partial_match",
+                    ],
+                    summary="需要人工审核。",
+                )
+            ],
+            selected_candidate_id=None,
+            result_status=ResultStatus.MANUAL_REVIEW,
+            risk_flags=[
+                "存在其他候选商品在品牌、品名和单位上匹配但规格不同，可能引起混淆",
+                "规格信息不完整",
+                "单位不一致",
+            ],
+            evidence_summary="需要人工确认。",
+            manual_review_reason="证据不足。",
+            can_auto_code=False,
+        )
+
+        self.assertEqual(
+            decision.candidate_assessments[0].risk_flags,
+            [
+                RiskFlag.PACKAGE_CONFLICT,
+                RiskFlag.NEEDS_UNSTATED_ASSUMPTION,
+                RiskFlag.CANDIDATE_POOL_MISSING_EVIDENCE,
+                RiskFlag.CORE_NAME_UNCERTAIN,
+            ],
+        )
+        self.assertEqual(
+            decision.risk_flags,
+            [
+                RiskFlag.MULTIPLE_VALID_CANDIDATES,
+                RiskFlag.INSUFFICIENT_CUSTOMER_INFO,
+                RiskFlag.UNIT_CONFLICT,
+            ],
+        )
+
     def test_model_decision_rejects_strong_auto_without_selected_candidate_assessment(self) -> None:
         with self.assertRaises(ValidationError):
             ModelDecision(
