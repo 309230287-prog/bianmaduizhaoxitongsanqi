@@ -136,6 +136,11 @@ async def phase2_workbench(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "index.html", _build_context(show_phase2=True))
 
 
+@app.get("/phase2/ui-demo", response_class=HTMLResponse)
+async def phase2_ui_demo(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "phase2_ui_demo.html", _build_context(show_phase2=True))
+
+
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "settings.html", _build_context())

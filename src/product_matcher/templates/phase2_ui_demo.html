@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>编码对照工作台 Demo</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='/favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
+</head>
+<body class="demo-shell">
+  <main class="demo-app">
+    <aside class="demo-sidebar">
+      <div class="demo-brand">
+        <span>编码</span>
+        <strong>对照工作台</strong>
+      </div>
+      <nav>
+        <a class="active" href="#demo-source">数据源</a>
+        <a href="#demo-run">生成对照</a>
+        <a href="#demo-review">结果复核</a>
+        <a href="/settings">模型设置</a>
+      </nav>
+    </aside>
+
+    <section class="demo-main">
+      <header class="demo-topbar">
+        <div>
+          <p class="eyebrow">界面打样</p>
+          <h1>编码对照工作台 Demo</h1>
+          <p>先把入口、按钮和结果表样子画出来，后续再逐个接实功能。</p>
+        </div>
+        <a class="download-link" href="/phase2">返回当前二期页面</a>
+      </header>
+
+      <section class="demo-stage" id="demo-source">
+        <div class="demo-section-title">
+          <span>01</span>
+          <div>
+            <h2>第一步：准备数据</h2>
+            <p>我司库提供标准编码，客户数据提供待对照商品。客户数据可以来自 Excel，也可以手工输入。</p>
+          </div>
+        </div>
+        <div class="demo-source-board">
+          <article class="demo-source-card primary">
+            <span class="demo-kicker">我司标准库</span>
+            <h3>更新我司商品库</h3>
+            <p>上传最新的我司商品 Excel，作为标准编码池。</p>
+            <div class="demo-upload-box">
+              <strong>拖入或选择 Excel</strong>
+              <small>支持 .xlsx</small>
+            </div>
+            <button type="button">导入我司商品库</button>
+          </article>
+
+          <article class="demo-source-card">
+            <span class="demo-kicker">客户 Excel</span>
+            <h3>上传客户商品库</h3>
+            <p>上传客户商品清单，系统读取名称、规格、单位等信息。</p>
+            <div class="demo-upload-box">
+              <strong>选择客户 Excel</strong>
+              <small>支持客户原始表</small>
+            </div>
+            <button type="button">导入客户商品库</button>
+          </article>
+
+          <article class="demo-source-card manual">
+            <span class="demo-kicker">临时少量商品</span>
+            <h3>手工输入客户商品</h3>
+            <p>一行一条，适合现场查几条。</p>
+            <div class="demo-textarea">
+              海天金标生抽　500ml　瓶　海天<br>
+              农夫山泉　550ml　瓶　农夫山泉
+            </div>
+            <button type="button">生成手工客户库</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="demo-stage" id="demo-run">
+        <div class="demo-section-title">
+          <span>02</span>
+          <div>
+            <h2>第二步：生成编码对照表</h2>
+            <p>选择处理条数和候选数量，然后生成中文 Excel 对照表。</p>
+          </div>
+        </div>
+        <div class="demo-run-panel">
+          <div>
+            <label>本次处理客户行数</label>
+            <strong>3 条小批验证</strong>
+          </div>
+          <div>
+            <label>每行候选数量</label>
+            <strong>10 个候选</strong>
+          </div>
+          <button type="button">生成编码对照表</button>
+        </div>
+      </section>
+
+      <section class="demo-stage" id="demo-review">
+        <div class="demo-section-title">
+          <span>03</span>
+          <div>
+            <h2>第三步：复核结果</h2>
+            <p>结果表只用中文业务语言表达，方便复制、筛选、人工复核。</p>
+          </div>
+        </div>
+        <div class="demo-result-table">
+          <table>
+            <thead>
+              <tr>
+                <th>客户商品名称</th>
+                <th>客户规格</th>
+                <th>客户单位</th>
+                <th>处理结论</th>
+                <th>对照我司编码</th>
+                <th>对照我司商品名称</th>
+                <th>人工复核说明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>海天金标生抽</td>
+                <td>500ml</td>
+                <td>瓶</td>
+                <td><span class="demo-status good">建议编码</span></td>
+                <td>C33882536</td>
+                <td>海天金标生抽500ml</td>
+                <td>规格和单位一致，建议人工确认后落码。</td>
+              </tr>
+              <tr>
+                <td>农夫山泉</td>
+                <td>550ml</td>
+                <td>瓶</td>
+                <td><span class="demo-status warn">需人工审核</span></td>
+                <td>C00001888</td>
+                <td>农夫山泉饮用水550ml</td>
+                <td>客户名称缺少完整包装信息。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

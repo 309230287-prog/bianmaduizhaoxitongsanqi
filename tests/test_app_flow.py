@@ -164,6 +164,24 @@ class AppFlowTests(unittest.TestCase):
         self.assertIn("手工输入客户商品", response.text)
         self.assertIn('name="manual_customer_items"', response.text)
 
+    def test_phase2_ui_demo_shows_operator_facing_mockup(self) -> None:
+        client = TestClient(app)
+
+        response = client.get("/phase2/ui-demo")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("编码对照工作台 Demo", response.text)
+        self.assertIn("第一步：准备数据", response.text)
+        self.assertIn("更新我司商品库", response.text)
+        self.assertIn("上传客户商品库", response.text)
+        self.assertIn("手工输入客户商品", response.text)
+        self.assertIn("第二步：生成编码对照表", response.text)
+        self.assertIn("第三步：复核结果", response.text)
+        self.assertIn("客户商品名称", response.text)
+        self.assertIn("对照我司编码", response.text)
+        self.assertNotIn("suggested_code", response.text)
+        self.assertNotIn("manual_review", response.text)
+
     def test_phase2_source_uploads_and_manual_input_update_runtime_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
