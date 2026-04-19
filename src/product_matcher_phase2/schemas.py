@@ -241,11 +241,12 @@ class ModelDecision(BaseModel):
     @model_validator(mode="after")
     def validate_auto_code_boundaries(self) -> "ModelDecision":
         if self.can_auto_code and self.result_status in {
+            ResultStatus.SUGGESTED_CODE,
             ResultStatus.MANUAL_REVIEW,
             ResultStatus.UNMATCHED,
             ResultStatus.MODEL_ERROR,
         }:
-            raise ValueError("manual, unmatched, and error results cannot auto-code")
+            raise ValueError("suggested, manual, unmatched, and error results cannot auto-code")
 
         if self.can_auto_code:
             if not self.selected_candidate_id:
@@ -263,6 +264,8 @@ class ModelDecision(BaseModel):
                 raise ValueError("auto-code cannot contain hard conflict risks")
 
         if self.result_status == ResultStatus.STRONG_AUTO_CODE:
+            if not self.can_auto_code:
+                raise ValueError("strong auto-code requires can_auto_code=true")
             if not self.selected_candidate_id:
                 raise ValueError("strong auto-code requires a selected candidate")
 
@@ -276,5 +279,8 @@ class ModelDecision(BaseModel):
             hard_risks = set(self.risk_flags).union(selected_risks).intersection(HARD_CONFLICT_RISKS)
             if hard_risks:
                 raise ValueError("strong auto-code cannot contain hard conflict risks")
+
+        if self.result_status == ResultStatus.UNMATCHED and self.selected_candidate_id:
+            raise ValueError("unmatched cannot select a candidate")
 
         return self

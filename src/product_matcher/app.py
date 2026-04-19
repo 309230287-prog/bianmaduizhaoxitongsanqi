@@ -663,6 +663,7 @@ def _load_phase2_trial_diagnostics_summary() -> dict:
         "source_label": PHASE2_TRIAL_DIAGNOSTICS_FILE.name,
         "total_count": None,
         "schema_validation_error": None,
+        "business_rule_validation_error": None,
         "schema_valid_after_normalization": None,
         "model_call_error": None,
         "status_match_count": None,
@@ -686,6 +687,10 @@ def _load_phase2_trial_diagnostics_summary() -> dict:
     summary["available"] = True
     summary["total_count"] = _extract_markdown_int(text, "- Total rows: ")
     summary["schema_validation_error"] = _extract_markdown_int(text, "- `schema_validation_error`: ")
+    summary["business_rule_validation_error"] = _extract_markdown_int(
+        text,
+        "- `business_rule_validation_error`: ",
+    )
     summary["schema_valid_after_normalization"] = _extract_markdown_int(
         text,
         "- `schema_valid_after_normalization`: ",

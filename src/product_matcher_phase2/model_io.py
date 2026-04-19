@@ -22,6 +22,11 @@ JUDGEMENT_RULES = [
     "规格、单位、包装层级、品牌、系列或等级存在冲突时，不能强自动落码。",
     "证据不够唯一时输出人工审核，允许给出建议候选，但不能自动落码。",
     "记忆只能作为证据参考，不能覆盖当前客户行和候选商品的直接证据。",
+    "result_status 必须按边界选择：strong_auto_code 表示唯一候选完整覆盖所有强身份信号且 can_auto_code=true。",
+    "weak_auto_code 表示存在人工确认过或证据明确的业务等价关系，无硬冲突，且 can_auto_code=true。",
+    "suggested_code 表示可以给出候选建议，但证据不足以自动落码，必须 can_auto_code=false。",
+    "manual_review 表示候选存在但证据不唯一、存在冲突或需要人工判断，必须 can_auto_code=false。",
+    "unmatched 表示 candidate_pool 为空，或没有任何候选能解释客户商品，必须 selected_candidate_id=null 且 can_auto_code=false。",
     "risk_flags 只能输出下列 RiskFlag 枚举值：core_name_uncertain, brand_conflict, spec_conflict, package_conflict, unit_conflict, series_or_grade_conflict, remark_changes_identity, needs_unstated_assumption, multiple_valid_candidates, insufficient_customer_info, candidate_pool_missing_evidence。",
 ]
 

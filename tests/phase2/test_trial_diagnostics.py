@@ -314,8 +314,10 @@ class TrialDiagnosticsTests(unittest.TestCase):
 
         self.assertEqual(summary["total_count"], 10)
         self.assertEqual(summary["category_counts"]["schema_validation_error"], 0)
-        self.assertEqual(summary["category_counts"]["schema_valid_after_normalization"], 9)
+        self.assertEqual(summary["category_counts"]["business_rule_validation_error"], 1)
+        self.assertEqual(summary["category_counts"]["schema_valid_after_normalization"], 8)
         self.assertEqual(summary["category_counts"]["model_call_error"], 1)
+        self.assertEqual(summary["representative_samples"]["business_rule_validation_error"][0]["sample_id"], "GS0001")
         self.assertEqual(summary["representative_samples"]["model_call_error"][0]["sample_id"], "GS0021")
 
 

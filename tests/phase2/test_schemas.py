@@ -259,6 +259,34 @@ class Phase2SchemaTests(unittest.TestCase):
                 can_auto_code=True,
             )
 
+    def test_model_decision_rejects_strong_auto_without_auto_code_flag(self) -> None:
+        with self.assertRaises(ValidationError):
+            ModelDecision(
+                customer_semantic_summary="海天金标生抽，500ml瓶装。",
+                key_identity_signals=["海天", "金标", "生抽", "500ml", "瓶"],
+                strong_constraints=["海天", "生抽", "500ml", "瓶"],
+                weak_constraints=[],
+                ignored_or_noise_signals=[],
+                missing_or_uncertain_signals=[],
+                candidate_assessments=[
+                    CandidateAssessment(
+                        candidate_id="K001",
+                        same_business_identity=True,
+                        matched_evidence=["品牌、品名、规格、单位一致"],
+                        conflicts=[],
+                        missing_evidence=[],
+                        risk_flags=[],
+                        summary="完全匹配。",
+                    )
+                ],
+                selected_candidate_id="K001",
+                result_status=ResultStatus.STRONG_AUTO_CODE,
+                risk_flags=[],
+                evidence_summary="证据完整。",
+                manual_review_reason="",
+                can_auto_code=False,
+            )
+
     def test_model_decision_rejects_manual_review_marked_auto_code(self) -> None:
         with self.assertRaises(ValidationError):
             ModelDecision(
@@ -293,6 +321,52 @@ class Phase2SchemaTests(unittest.TestCase):
                 evidence_summary="缺少被选候选。",
                 manual_review_reason="",
                 can_auto_code=True,
+            )
+
+    def test_model_decision_rejects_suggested_code_marked_auto_code(self) -> None:
+        with self.assertRaises(ValidationError):
+            ModelDecision(
+                customer_semantic_summary="可给建议但不能自动落码。",
+                key_identity_signals=["白辣椒"],
+                strong_constraints=["白辣椒"],
+                weak_constraints=[],
+                ignored_or_noise_signals=[],
+                missing_or_uncertain_signals=["规格"],
+                candidate_assessments=[
+                    CandidateAssessment(
+                        candidate_id="K001",
+                        same_business_identity=False,
+                        matched_evidence=["名称匹配"],
+                        conflicts=[],
+                        missing_evidence=["规格缺失"],
+                        risk_flags=[RiskFlag.INSUFFICIENT_CUSTOMER_INFO],
+                        summary="只能建议。",
+                    )
+                ],
+                selected_candidate_id="K001",
+                result_status=ResultStatus.SUGGESTED_CODE,
+                risk_flags=[RiskFlag.INSUFFICIENT_CUSTOMER_INFO],
+                evidence_summary="证据不足。",
+                manual_review_reason="只能给建议，不能自动。",
+                can_auto_code=True,
+            )
+
+    def test_model_decision_rejects_unmatched_with_selected_candidate(self) -> None:
+        with self.assertRaises(ValidationError):
+            ModelDecision(
+                customer_semantic_summary="候选池为空或无法解释客户商品。",
+                key_identity_signals=["熟咸蛋"],
+                strong_constraints=["熟咸蛋"],
+                weak_constraints=[],
+                ignored_or_noise_signals=[],
+                missing_or_uncertain_signals=[],
+                candidate_assessments=[],
+                selected_candidate_id="K001",
+                result_status=ResultStatus.UNMATCHED,
+                risk_flags=[RiskFlag.CANDIDATE_POOL_MISSING_EVIDENCE],
+                evidence_summary="无可用候选。",
+                manual_review_reason="",
+                can_auto_code=False,
             )
 
     def test_model_decision_rejects_weak_auto_when_selected_assessment_has_hard_conflict(self) -> None:

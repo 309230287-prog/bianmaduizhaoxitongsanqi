@@ -98,6 +98,9 @@ class ModelInputPayloadTests(unittest.TestCase):
         self.assertIn("不能只按名称相似", rules)
         self.assertIn("规格", rules)
         self.assertIn("人工审核", rules)
+        self.assertIn("strong_auto_code", rules)
+        self.assertIn("candidate_pool", rules)
+        self.assertIn("unmatched", rules)
 
     def test_payload_mentions_allowed_risk_flag_enum_values(self) -> None:
         payload = build_model_input_payload(
