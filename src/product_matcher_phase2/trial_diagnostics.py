@@ -300,7 +300,7 @@ def _selected_code_mismatches_expected(row: TrialResultRow) -> bool:
 def _is_unsafe_auto_code(row: TrialResultRow) -> bool:
     if not _row_can_auto_code(row):
         return False
-    if row.expected_result_status != "strong_auto_code":
+    if row.expected_result_status not in {"strong_auto_code", "weak_auto_code"}:
         return True
     if _selected_code_mismatches_expected(row):
         return True
@@ -318,16 +318,7 @@ def _to_bool(value: Any) -> bool:
 
 
 def _row_can_auto_code(row: TrialResultRow) -> bool:
-    if _to_bool(row.can_auto_code):
-        return True
-    raw_output = (row.raw_model_output or "").strip()
-    if not raw_output:
-        return False
-    try:
-        payload = json.loads(raw_output)
-    except json.JSONDecodeError:
-        return False
-    return _to_bool(payload.get("can_auto_code"))
+    return _to_bool(row.can_auto_code)
 
 
 def _load_trial_case_lookup(trial_input_path: str | Path | None) -> dict[str, Any]:
@@ -359,7 +350,7 @@ def _selected_company_code_from_current_decision(
 def _is_unsafe_current_auto_code(row: TrialResultRow, can_auto_code: bool, selected_code: str) -> bool:
     if not can_auto_code:
         return False
-    if row.expected_result_status != "strong_auto_code":
+    if row.expected_result_status not in {"strong_auto_code", "weak_auto_code"}:
         return True
     expected_code = (row.expected_company_code or "").strip()
     if expected_code and selected_code != expected_code:

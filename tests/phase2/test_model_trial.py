@@ -373,6 +373,95 @@ class ModelTrialTests(unittest.TestCase):
         self.assertEqual(result.selected_company_code, "C000001")
         self.assertFalse(result.can_auto_code)
 
+    def test_bracketed_customer_spec_can_downgrade_strong_auto_to_weak_auto_when_top_candidate_is_explicit(self) -> None:
+        case = ModelTrialCase(
+            sample_id="WEAK001",
+            sample_group="equivalence",
+            expected_company_code="C000001",
+            expected_result_status="weak_auto_code",
+            payload={
+                "customer_record": {"mapped_fields": {"name": "海天草菇老抽", "spec": "[1*6*1.9L]", "unit": "件"}},
+                "candidate_products": [
+                    {
+                        "candidate_id": "K000001",
+                        "candidate_evidence": {
+                            "unit": "件",
+                            "spec_tokens": ["1*6*1.9l", "1.9l"],
+                            "match_sources": ["name_contains", "spec_in_product_text", "spec_in_product_name", "unit_match"],
+                        },
+                        "product": {"code": "C000001", "name": "海天草菇老抽1*6*1.9L", "unit": "件"},
+                    },
+                    {
+                        "candidate_id": "K000002",
+                        "candidate_evidence": {
+                            "unit": "件",
+                            "spec_tokens": ["1*6*1.9l", "1.9l"],
+                            "match_sources": ["name_exact", "spec_in_product_text", "unit_match"],
+                        },
+                        "product": {"code": "C000002", "name": "海天草菇老抽", "unit": "件"},
+                    },
+                ],
+            },
+        )
+
+        result = run_trial_cases([case], self._strong_auto_model)[0]
+
+        self.assertEqual(result.parsed_result_status, "weak_auto_code")
+        self.assertTrue(result.can_auto_code)
+        self.assertEqual(result.selected_company_code, "C000001")
+        self.assertEqual(summarize_trial_results([result])["unsafe_auto_code_count"], 0)
+
+    def test_manual_review_with_single_top_hint_becomes_suggested_code_without_auto_code(self) -> None:
+        case = ModelTrialCase(
+            sample_id="SUG002",
+            sample_group="hidden_info",
+            expected_company_code="C000001",
+            expected_result_status="suggested_code",
+            payload={
+                "customer_record": {"mapped_fields": {"name": "广祥泰鸡饭老抽640ml", "unit": "瓶"}},
+                "candidate_products": [
+                    {
+                        "candidate_id": "K000001",
+                        "candidate_evidence": {
+                            "unit": "瓶",
+                            "spec_tokens": ["1*640ml", "640ml"],
+                            "match_sources": ["name_terms_match", "unit_match"],
+                            "conflict_notes": [],
+                        },
+                        "product": {"code": "C000001", "name": "广泰祥鸡饭老抽1*640ml", "unit": "瓶"},
+                    },
+                    {
+                        "candidate_id": "K000002",
+                        "candidate_evidence": {
+                            "unit": "瓶",
+                            "spec_tokens": ["1*1.9l", "1.9l"],
+                            "match_sources": ["name_terms_match", "unit_match"],
+                            "conflict_notes": [],
+                        },
+                        "product": {"code": "C000002", "name": "海天老抽1*1.9L", "unit": "瓶"},
+                    },
+                ],
+            },
+        )
+
+        def call_model(_payload):
+            return {
+                "customer_semantic_summary": "存在品牌字序风险。",
+                "candidate_assessments": [],
+                "selected_candidate_id": None,
+                "result_status": "manual_review",
+                "risk_flags": ["brand_conflict"],
+                "evidence_summary": "首候选可作为建议。",
+                "manual_review_reason": "品牌字序需人工确认。",
+                "can_auto_code": False,
+            }
+
+        result = run_trial_cases([case], call_model)[0]
+
+        self.assertEqual(result.parsed_result_status, "suggested_code")
+        self.assertEqual(result.selected_company_code, "C000001")
+        self.assertFalse(result.can_auto_code)
+
     def _strong_auto_model(self, _payload):
         return {
             "customer_semantic_summary": "模型认为可自动。",

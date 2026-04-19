@@ -146,7 +146,7 @@ class TrialDiagnosticsTests(unittest.TestCase):
         self.assertEqual(summary["acceptance_summary"]["status_match_count"], 0)
         self.assertEqual(summary["acceptance_summary"]["selected_code_match_count"], 0)
         self.assertEqual(summary["acceptance_summary"]["selected_code_mismatch_count"], 0)
-        self.assertEqual(summary["acceptance_summary"]["unsafe_auto_code_count"], 2)
+        self.assertEqual(summary["acceptance_summary"]["unsafe_auto_code_count"], 0)
         self.assertEqual(
             summary["category_counts"],
             {

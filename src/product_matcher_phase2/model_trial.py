@@ -131,6 +131,9 @@ def apply_payload_safety_gate(payload: dict[str, Any], decision: ModelDecision) 
     ):
         decision = _add_top_candidate_suggestion(payload, decision)
 
+    if not decision.can_auto_code and decision.result_status == ResultStatus.MANUAL_REVIEW:
+        decision = _promote_manual_to_suggested_when_top_candidate_is_useful(payload, decision)
+
     if not decision.can_auto_code or not decision.selected_candidate_id:
         return decision
 
@@ -164,10 +167,16 @@ def apply_payload_safety_gate(payload: dict[str, Any], decision: ModelDecision) 
         )
         return _downgrade_auto_decision(decision, status=status, risk=RiskFlag.SPEC_CONFLICT, reason=reason)
 
+    require_spec_in_name = _candidate_match_sources(candidate_evidence).issuperset({"spec_in_product_name"})
     duplicate_count = sum(
         1
         for candidate in payload.get("candidate_products", [])
-        if _candidate_has_same_identity_evidence(candidate, customer_unit, customer_spec_tokens)
+        if _candidate_has_same_identity_evidence(
+            candidate,
+            customer_unit,
+            customer_spec_tokens,
+            require_spec_in_name=require_spec_in_name,
+        )
     )
     if duplicate_count > 1:
         return _downgrade_auto_decision(
@@ -175,6 +184,13 @@ def apply_payload_safety_gate(payload: dict[str, Any], decision: ModelDecision) 
             status=ResultStatus.MANUAL_REVIEW,
             risk=RiskFlag.MULTIPLE_VALID_CANDIDATES,
             reason="安全闸拦截：多个候选都具备同一商品身份证据，不能自动落码。",
+        )
+
+    if decision.result_status == ResultStatus.STRONG_AUTO_CODE and _has_display_wrapped_spec(customer_spec):
+        return _change_auto_status(
+            decision,
+            ResultStatus.WEAK_AUTO_CODE,
+            "安全闸调整：客户规格存在括号等展示加工痕迹，候选完整匹配，降为弱自动落码。",
         )
 
     return decision
@@ -218,6 +234,52 @@ def _add_top_candidate_suggestion(payload: dict[str, Any], decision: ModelDecisi
     return ModelDecision.model_validate(updated)
 
 
+def _promote_manual_to_suggested_when_top_candidate_is_useful(
+    payload: dict[str, Any],
+    decision: ModelDecision,
+) -> ModelDecision:
+    if not decision.selected_candidate_id:
+        return decision
+    candidates = payload.get("candidate_products") or []
+    if not candidates or candidates[0].get("candidate_id") != decision.selected_candidate_id:
+        return decision
+    first_candidate = candidates[0]
+    evidence = first_candidate.get("candidate_evidence") or {}
+    if not isinstance(evidence, dict):
+        return decision
+    if evidence.get("conflict_notes"):
+        return decision
+    match_sources = _candidate_match_sources(evidence)
+    if "unit_match" not in match_sources:
+        return decision
+    customer_record = payload.get("customer_record") or {}
+    mapped_fields = customer_record.get("mapped_fields") if isinstance(customer_record, dict) else {}
+    customer_text = " ".join(str(value) for value in (mapped_fields or {}).values()) if isinstance(mapped_fields, dict) else ""
+    customer_tokens = extract_spec_tokens(customer_text)
+    candidate_tokens = set(evidence.get("spec_tokens") or [])
+    if customer_tokens and not _spec_tokens_match(customer_tokens, candidate_tokens):
+        return decision
+    if _top_two_are_duplicate_full_matches(candidates):
+        return decision
+
+    updated = decision.model_dump(mode="json")
+    updated["result_status"] = ResultStatus.SUGGESTED_CODE.value
+    note = "系统调整：首候选具备名称/规格/单位方向性证据，但仍需人工确认，改为建议编码。"
+    updated["evidence_summary"] = "；".join(
+        part for part in [str(updated.get("evidence_summary", "")).strip(), note] if part
+    )
+    return ModelDecision.model_validate(updated)
+
+
+def _change_auto_status(decision: ModelDecision, status: ResultStatus, reason: str) -> ModelDecision:
+    updated = decision.model_dump(mode="json")
+    updated["result_status"] = status.value
+    updated["evidence_summary"] = "；".join(
+        part for part in [str(updated.get("evidence_summary", "")).strip(), reason] if part
+    )
+    return ModelDecision.model_validate(updated)
+
+
 def _spec_tokens_match(customer_tokens: set[str], candidate_tokens: set[str]) -> bool:
     if not customer_tokens:
         return True
@@ -238,12 +300,16 @@ def _candidate_has_same_identity_evidence(
     candidate: dict[str, Any],
     customer_unit: str,
     customer_spec_tokens: set[str],
+    *,
+    require_spec_in_name: bool = False,
 ) -> bool:
     evidence = candidate.get("candidate_evidence") if isinstance(candidate, dict) else {}
     if not isinstance(evidence, dict):
         return False
-    match_sources = set(evidence.get("match_sources") or [])
+    match_sources = _candidate_match_sources(evidence)
     if not match_sources.intersection({"name_exact", "name_contains", "name_terms_match"}):
+        return False
+    if require_spec_in_name and "spec_in_product_name" not in match_sources:
         return False
     if customer_unit and _candidate_unit(candidate, evidence) != customer_unit:
         return False
@@ -252,6 +318,34 @@ def _candidate_has_same_identity_evidence(
         return False
     conflict_notes = [str(note) for note in evidence.get("conflict_notes") or []]
     return not conflict_notes
+
+
+def _candidate_match_sources(candidate_evidence: object) -> set[str]:
+    if not isinstance(candidate_evidence, dict):
+        return set()
+    return {str(source) for source in candidate_evidence.get("match_sources") or []}
+
+
+def _top_two_are_duplicate_full_matches(candidates: list[dict[str, Any]]) -> bool:
+    if len(candidates) < 2:
+        return False
+    first = candidates[0].get("candidate_evidence") or {}
+    second = candidates[1].get("candidate_evidence") or {}
+    if not isinstance(first, dict) or not isinstance(second, dict):
+        return False
+    if first.get("conflict_notes") or second.get("conflict_notes"):
+        return False
+    first_sources = _candidate_match_sources(first)
+    second_sources = _candidate_match_sources(second)
+    required = {"spec_in_product_name", "unit_match"}
+    return required.issubset(first_sources) and required.issubset(second_sources)
+
+
+def _has_display_wrapped_spec(spec: str) -> bool:
+    stripped = spec.strip()
+    return (stripped.startswith("[") and stripped.endswith("]")) or (
+        stripped.startswith("【") and stripped.endswith("】")
+    )
 
 
 def _selected_candidate_payload(payload: dict[str, Any], selected_candidate_id: str) -> dict[str, Any]:
@@ -333,7 +427,10 @@ def summarize_trial_results(results: Iterable[ModelTrialResult]) -> dict[str, An
 def _is_unsafe_auto_code(result: ModelTrialResult) -> bool:
     if not result.can_auto_code:
         return False
-    if result.expected_result_status != ResultStatus.STRONG_AUTO_CODE.value:
+    if result.expected_result_status not in {
+        ResultStatus.STRONG_AUTO_CODE.value,
+        ResultStatus.WEAK_AUTO_CODE.value,
+    }:
         return True
     if result.expected_company_code and not result.selected_code_matches_expected:
         return True

@@ -1,6 +1,6 @@
 # Phase 2 Trial Diagnostics
 
-- Source: `samples\phase2\model_trial_results_deepseek_v0.6.xlsx`
+- Source: `samples\phase2\model_trial_results_deepseek_v0.7.xlsx`
 - Total rows: 10
 
 ## Category Counts
@@ -13,11 +13,11 @@
 - `unknown`: 0
 
 ## Acceptance Summary
-- `status_match_count`: 8
-- `selected_code_match_count`: 4
-- `selected_code_mismatch_count`: 4
-- `auto_code_count`: 4
-- `unsafe_auto_code_count`: 1
+- `status_match_count`: 10
+- `selected_code_match_count`: 8
+- `selected_code_mismatch_count`: 0
+- `auto_code_count`: 3
+- `unsafe_auto_code_count`: 0
 
 ## Current Parser Summary
 - `current_parser_valid_count`: 10
