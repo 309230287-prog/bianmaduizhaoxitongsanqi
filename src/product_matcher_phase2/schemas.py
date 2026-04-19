@@ -68,6 +68,13 @@ def _normalize_risk_flag_value(value: object) -> object:
 def _infer_risk_flag_from_text(text: str) -> RiskFlag | None:
     if not text:
         return None
+    lowered = text.lower()
+    if "multiple candidates" in lowered:
+        return RiskFlag.MULTIPLE_VALID_CANDIDATES
+    if "unit" in lowered and ("conflict" in lowered or "mismatch" in lowered):
+        return RiskFlag.UNIT_CONFLICT
+    if "spec" in lowered and ("conflict" in lowered or "mismatch" in lowered or "missing" in lowered):
+        return RiskFlag.SPEC_CONFLICT
     if "候选商品列表为空" in text or "候选池为空" in text:
         return RiskFlag.CANDIDATE_POOL_MISSING_EVIDENCE
     if "多个候选" in text or "其他候选" in text or "混淆" in text:

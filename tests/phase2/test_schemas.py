@@ -217,6 +217,8 @@ class Phase2SchemaTests(unittest.TestCase):
                 "存在其他候选商品在品牌、品名和单位上匹配但规格不同，可能引起混淆",
                 "规格信息不完整",
                 "单位不一致",
+                "multiple candidates with identical matches may indicate duplicates or similar products",
+                "规格描述不直接匹配",
             ],
             evidence_summary="需要人工确认。",
             manual_review_reason="证据不足。",
@@ -238,6 +240,8 @@ class Phase2SchemaTests(unittest.TestCase):
                 RiskFlag.MULTIPLE_VALID_CANDIDATES,
                 RiskFlag.INSUFFICIENT_CUSTOMER_INFO,
                 RiskFlag.UNIT_CONFLICT,
+                RiskFlag.MULTIPLE_VALID_CANDIDATES,
+                RiskFlag.SPEC_CONFLICT,
             ],
         )
 

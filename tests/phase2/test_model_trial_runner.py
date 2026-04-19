@@ -61,6 +61,10 @@ class ModelTrialRunnerTests(unittest.TestCase):
 
         self.assertEqual(response["result_status"], "manual_review")
         self.assertIn("商品编码对照系统二期", calls[0]["system_prompt"])
+        self.assertIn("candidate_pool 为空", calls[0]["system_prompt"])
+        self.assertIn("unmatched", calls[0]["system_prompt"])
+        self.assertIn("其他候选存在硬冲突", calls[0]["system_prompt"])
+        self.assertIn("can_auto_code=true", calls[0]["system_prompt"])
         self.assertEqual(calls[0]["user_payload"], {"hello": "world"})
         self.assertEqual(calls[0]["temperature"], 0.0)
         self.assertGreaterEqual(calls[0]["max_tokens"], 2000)

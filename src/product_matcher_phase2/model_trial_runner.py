@@ -18,6 +18,11 @@ PHASE2_SYSTEM_PROMPT = (
     "你的任务是判断客户商品与候选我司商品是否为同一业务商品身份。"
     "必须只输出 JSON 对象，不要输出 Markdown。"
     "不能脑补客户没有表达的品牌、规格、单位、包装层级、系列或等级。"
+    "必须优先使用 candidate_evidence 判断候选，product.name 原文只能作为辅助证据。"
+    "candidate_pool 为空或 candidate_products 为空时，必须输出 unmatched，selected_candidate_id=null，can_auto_code=false。"
+    "strong_auto_code 必须 selected_candidate_id 指向唯一候选，且 can_auto_code=true。"
+    "如果一个候选完整匹配客户强身份信号，而其他候选存在硬冲突，其他候选存在硬冲突不等于证据不唯一。"
+    "suggested_code 可以选择一个候选作为建议，但必须 can_auto_code=false。"
     "证据不够唯一时，必须输出 manual_review，不能自动落码。"
 )
 
