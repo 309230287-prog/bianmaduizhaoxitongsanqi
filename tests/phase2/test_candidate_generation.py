@@ -84,6 +84,28 @@ class CandidateGenerationTests(unittest.TestCase):
         self.assertIn("name_terms_match", candidates[0].candidate_sources)
         self.assertIn("spec_in_product_text", candidates[0].candidate_sources)
 
+    def test_candidate_evidence_exposes_name_spec_unit_and_conflicts(self) -> None:
+        record = CustomerRecord(
+            record_id="customer:953",
+            source_row_number=953,
+            raw_fields={},
+            mapped_fields={"name": "海天金标生抽", "spec": "1*6*1.9L", "unit": "件"},
+        )
+        products = [
+            self._product("C33884118", "海天酱油金标生抽1*6*1.9L", "件", ""),
+            self._product("C33870472", "海天酱油金标生抽1*1.9L", "瓶", ""),
+        ]
+
+        candidates = generate_candidates(record, products, limit=2)
+
+        self.assertEqual(candidates[0].candidate_evidence.name_terms, ["金标", "生抽", "海天"])
+        self.assertIn("1*6*1.9l", candidates[0].candidate_evidence.spec_tokens)
+        self.assertIn("1.9l", candidates[0].candidate_evidence.spec_tokens)
+        self.assertEqual(candidates[0].candidate_evidence.unit, "件")
+        self.assertIn("spec_in_product_text", candidates[0].candidate_evidence.match_sources)
+        self.assertEqual(candidates[0].candidate_evidence.conflict_notes, [])
+        self.assertIn("单位不一致", candidates[1].candidate_evidence.conflict_notes[0])
+
     def test_business_synonym_terms_recall_vegetable_candidate(self) -> None:
         record = CustomerRecord(
             record_id="customer:444",

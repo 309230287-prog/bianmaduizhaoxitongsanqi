@@ -161,6 +161,15 @@ class CandidateItem(BaseModel):
     product: CompanyProduct
     candidate_sources: list[str] = Field(default_factory=list)
     candidate_notes: str = ""
+    candidate_evidence: "CandidateEvidence" = Field(default_factory=lambda: CandidateEvidence())
+
+
+class CandidateEvidence(BaseModel):
+    name_terms: list[str] = Field(default_factory=list)
+    spec_tokens: list[str] = Field(default_factory=list)
+    unit: str = ""
+    match_sources: list[str] = Field(default_factory=list)
+    conflict_notes: list[str] = Field(default_factory=list)
 
 
 class CandidateAssessment(BaseModel):

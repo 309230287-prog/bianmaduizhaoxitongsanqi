@@ -27,6 +27,7 @@ JUDGEMENT_RULES = [
     "suggested_code 表示可以给出候选建议，但证据不足以自动落码，必须 can_auto_code=false。",
     "manual_review 表示候选存在但证据不唯一、存在冲突或需要人工判断，必须 can_auto_code=false。",
     "unmatched 表示 candidate_pool 为空，或没有任何候选能解释客户商品，必须 selected_candidate_id=null 且 can_auto_code=false。",
+    "判断候选时优先使用 candidate_evidence.name_terms、spec_tokens、unit、match_sources、conflict_notes；product.name 原文只能作为辅助证据。",
     "risk_flags 只能输出下列 RiskFlag 枚举值：core_name_uncertain, brand_conflict, spec_conflict, package_conflict, unit_conflict, series_or_grade_conflict, remark_changes_identity, needs_unstated_assumption, multiple_valid_candidates, insufficient_customer_info, candidate_pool_missing_evidence。",
 ]
 

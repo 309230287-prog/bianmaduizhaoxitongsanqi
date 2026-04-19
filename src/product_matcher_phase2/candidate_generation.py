@@ -5,10 +5,14 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Iterable
 
-from product_matcher_phase2.schemas import CandidateItem, CompanyProduct, CustomerRecord
+from product_matcher_phase2.schemas import CandidateEvidence, CandidateItem, CompanyProduct, CustomerRecord
 
 
 SPEC_TOKEN_RE = re.compile(r"\d+(?:\.\d+)?(?:ml|l|g|kg|毫升|升|克|千克)", re.IGNORECASE)
+COMPOSITE_SPEC_TOKEN_RE = re.compile(
+    r"\d+(?:\*\d+)*(?:\*\d+(?:\.\d+)?(?:ml|l|g|kg|毫升|升|克|千克))",
+    re.IGNORECASE,
+)
 DOMAIN_SIGNAL_TERMS = [
     "可口可乐",
     "王老吉",
@@ -40,6 +44,7 @@ class _ScoredCandidate:
     product: CompanyProduct
     sources: list[str]
     notes: list[str]
+    evidence: CandidateEvidence
 
 
 def _normalize(text: str) -> str:
@@ -60,7 +65,9 @@ def _product_search_text(product: CompanyProduct) -> str:
 
 def _spec_tokens(spec: str) -> set[str]:
     normalized = unicodedata.normalize("NFKC", spec).lower()
-    return {_normalize(match.group(0)) for match in SPEC_TOKEN_RE.finditer(normalized)}
+    tokens = {_normalize(match.group(0)) for match in SPEC_TOKEN_RE.finditer(normalized)}
+    tokens.update({_normalize(match.group(0)) for match in COMPOSITE_SPEC_TOKEN_RE.finditer(normalized)})
+    return tokens
 
 
 def _name_terms(name: str) -> list[str]:
@@ -111,7 +118,14 @@ def _score_product(record: CustomerRecord, product: CompanyProduct) -> _ScoredCa
         else:
             notes.append(f"单位不一致：客户={unit}，我司={product.unit}")
 
-    return _ScoredCandidate(score=score, product=product, sources=sources, notes=notes)
+    evidence = CandidateEvidence(
+        name_terms=_name_terms(name),
+        spec_tokens=sorted(_spec_tokens(" ".join([product.name, product.description]))),
+        unit=product.unit,
+        match_sources=list(sources),
+        conflict_notes=list(notes),
+    )
+    return _ScoredCandidate(score=score, product=product, sources=sources, notes=notes, evidence=evidence)
 
 
 def generate_candidates(
@@ -131,6 +145,7 @@ def generate_candidates(
             product=item.product,
             candidate_sources=item.sources,
             candidate_notes="；".join(item.notes),
+            candidate_evidence=item.evidence,
         )
         for index, item in enumerate(ranked[:limit], start=1)
     ]

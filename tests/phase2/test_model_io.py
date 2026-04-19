@@ -13,7 +13,7 @@ from product_matcher_phase2.model_io import (
     parse_model_decision_response,
     render_model_prompt,
 )
-from product_matcher_phase2.schemas import CandidateItem, CompanyProduct, CustomerRecord
+from product_matcher_phase2.schemas import CandidateEvidence, CandidateItem, CompanyProduct, CustomerRecord
 
 
 class ModelInputPayloadTests(unittest.TestCase):
@@ -85,6 +85,33 @@ class ModelInputPayloadTests(unittest.TestCase):
         self.assertIn("spec_partial_match", payload["candidate_products"][0]["candidate_sources"])
         self.assertEqual(payload["applicable_memories"][0]["memory_id"], "M000001")
 
+    def test_payload_includes_structured_candidate_evidence_for_model(self) -> None:
+        candidate = self._candidate().model_copy(
+            update={
+                "candidate_evidence":
+                    CandidateEvidence(
+                        name_terms=["海天", "金标", "生抽"],
+                        spec_tokens=["500ml"],
+                        unit="瓶",
+                        match_sources=["name_contains", "spec_partial_match"],
+                        conflict_notes=["客户是整件规格，候选是单瓶规格"],
+                    )
+            }
+        )
+
+        payload = build_model_input_payload(
+            record=self._record(),
+            candidates=[candidate],
+            applicable_memories=[],
+        )
+
+        evidence = payload["candidate_products"][0]["candidate_evidence"]
+        self.assertEqual(evidence["name_terms"], ["海天", "金标", "生抽"])
+        self.assertEqual(evidence["spec_tokens"], ["500ml"])
+        self.assertEqual(evidence["unit"], "瓶")
+        self.assertIn("spec_partial_match", evidence["match_sources"])
+        self.assertIn("单瓶规格", evidence["conflict_notes"][0])
+
     def test_payload_contains_phase2_guardrail_rules(self) -> None:
         payload = build_model_input_payload(
             record=self._record(),
@@ -101,6 +128,7 @@ class ModelInputPayloadTests(unittest.TestCase):
         self.assertIn("strong_auto_code", rules)
         self.assertIn("candidate_pool", rules)
         self.assertIn("unmatched", rules)
+        self.assertIn("candidate_evidence", rules)
 
     def test_payload_mentions_allowed_risk_flag_enum_values(self) -> None:
         payload = build_model_input_payload(
