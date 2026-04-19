@@ -73,6 +73,7 @@ class ModelTrialTests(unittest.TestCase):
         self.assertTrue(results[0].parse_ok)
         self.assertTrue(results[0].status_matches_expected)
         self.assertEqual(results[0].selected_company_code, "C33870472")
+        self.assertTrue(results[0].selected_code_matches_expected)
 
     def test_run_trial_cases_records_invalid_json_without_crashing(self) -> None:
         def call_model(_payload):
@@ -123,18 +124,38 @@ class ModelTrialTests(unittest.TestCase):
 
         self.assertIn("sample_id", headers)
         self.assertIn("raw_model_output", headers)
+        self.assertIn("selected_code_matches_expected", headers)
         self.assertEqual(values[headers.index("sample_id")], "GS0001")
         self.assertEqual(values[headers.index("parsed_result_status")], "manual_review")
 
-    def test_summarize_trial_results_counts_json_and_status_matches(self) -> None:
-        def call_model(_payload):
-            return "不是 JSON"
+    def test_summarize_trial_results_counts_json_status_and_selected_code_matches(self) -> None:
+        def call_model(payload):
+            code = payload["candidate_products"][0]["product"]["code"]
+            return {
+                "customer_semantic_summary": "按样本选择候选。",
+                "candidate_assessments": [
+                    {
+                        "candidate_id": "K000001",
+                        "same_business_identity": True,
+                        "risk_flags": [],
+                        "summary": "候选可解释客户商品。",
+                    }
+                ],
+                "selected_candidate_id": "K000001",
+                "result_status": "strong_auto_code",
+                "risk_flags": [],
+                "evidence_summary": f"选择 {code}。",
+                "manual_review_reason": "",
+                "can_auto_code": True,
+            }
 
         summary = summarize_trial_results(run_trial_cases([self._case()], call_model))
 
         self.assertEqual(summary["total_count"], 1)
-        self.assertEqual(summary["json_valid_count"], 0)
-        self.assertEqual(summary["status_match_count"], 0)
+        self.assertEqual(summary["json_valid_count"], 1)
+        self.assertEqual(summary["status_match_count"], 1)
+        self.assertEqual(summary["selected_code_match_count"], 1)
+        self.assertEqual(summary["selected_code_mismatch_count"], 0)
 
 
 if __name__ == "__main__":

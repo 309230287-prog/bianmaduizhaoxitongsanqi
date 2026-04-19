@@ -236,6 +236,14 @@
           <span>状态命中</span>
           <strong id="phase2-summary-status">0</strong>
         </div>
+        <div class="summary-card auto">
+          <span>编码命中</span>
+          <strong id="phase2-summary-code-match">0</strong>
+        </div>
+        <div class="summary-card unmatched">
+          <span>编码错选</span>
+          <strong id="phase2-summary-code-mismatch">0</strong>
+        </div>
         <div class="summary-card review">
           <span>自动落码</span>
           <strong id="phase2-summary-auto">0</strong>
@@ -689,6 +697,8 @@
       const totalEl = document.getElementById('phase2-summary-total');
       const jsonEl = document.getElementById('phase2-summary-json');
       const statusMatchEl = document.getElementById('phase2-summary-status');
+      const codeMatchEl = document.getElementById('phase2-summary-code-match');
+      const codeMismatchEl = document.getElementById('phase2-summary-code-mismatch');
       const autoEl = document.getElementById('phase2-summary-auto');
       const downloadActionsEl = document.getElementById('phase2-job-download-actions');
       const downloadLinkEl = document.getElementById('phase2-job-download-link');
@@ -724,6 +734,12 @@
           }
           if (statusMatchEl) {
             statusMatchEl.textContent = payload.summary.status_match_count || 0;
+          }
+          if (codeMatchEl) {
+            codeMatchEl.textContent = payload.summary.selected_code_match_count || 0;
+          }
+          if (codeMismatchEl) {
+            codeMismatchEl.textContent = payload.summary.selected_code_mismatch_count || 0;
           }
           if (autoEl) {
             autoEl.textContent = payload.summary.auto_code_count || 0;

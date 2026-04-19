@@ -35,6 +35,7 @@ class ModelTrialResult:
     status_matches_expected: bool
     selected_candidate_id: str
     selected_company_code: str
+    selected_code_matches_expected: bool
     can_auto_code: bool
     evidence_summary: str
     manual_review_reason: str
@@ -80,6 +81,9 @@ def _run_one_case(case: ModelTrialCase, call_model: ModelCaller) -> ModelTrialRe
         error_message = str(exc)
 
     selected_company_code = _selected_company_code(case.payload, decision.selected_candidate_id)
+    selected_code_matches_expected = bool(case.expected_company_code) and (
+        selected_company_code == case.expected_company_code
+    )
     return ModelTrialResult(
         sample_id=case.sample_id,
         sample_group=case.sample_group,
@@ -91,6 +95,7 @@ def _run_one_case(case: ModelTrialCase, call_model: ModelCaller) -> ModelTrialRe
         status_matches_expected=decision.result_status.value == case.expected_result_status,
         selected_candidate_id=decision.selected_candidate_id or "",
         selected_company_code=selected_company_code,
+        selected_code_matches_expected=selected_code_matches_expected,
         can_auto_code=decision.can_auto_code,
         evidence_summary=decision.evidence_summary,
         manual_review_reason=decision.manual_review_reason,
@@ -136,6 +141,7 @@ TRIAL_RESULT_HEADERS = [
     "parse_ok",
     "selected_candidate_id",
     "selected_company_code",
+    "selected_code_matches_expected",
     "can_auto_code",
     "evidence_summary",
     "manual_review_reason",
@@ -163,6 +169,11 @@ def summarize_trial_results(results: Iterable[ModelTrialResult]) -> dict[str, An
     total_count = len(result_list)
     json_valid_count = sum(1 for result in result_list if result.parse_ok)
     status_match_count = sum(1 for result in result_list if result.status_matches_expected)
+    code_evaluated_results = [result for result in result_list if result.expected_company_code]
+    selected_code_match_count = sum(
+        1 for result in code_evaluated_results if result.selected_code_matches_expected
+    )
+    selected_code_mismatch_count = len(code_evaluated_results) - selected_code_match_count
     auto_code_count = sum(1 for result in result_list if result.can_auto_code)
     return {
         "total_count": total_count,
@@ -170,5 +181,7 @@ def summarize_trial_results(results: Iterable[ModelTrialResult]) -> dict[str, An
         "json_valid_rate": json_valid_count / total_count if total_count else 0.0,
         "status_match_count": status_match_count,
         "status_match_rate": status_match_count / total_count if total_count else 0.0,
+        "selected_code_match_count": selected_code_match_count,
+        "selected_code_mismatch_count": selected_code_mismatch_count,
         "auto_code_count": auto_code_count,
     }
