@@ -33,6 +33,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=str(ROOT / "samples" / "phase2" / "model_trial_results_v0.1.xlsx"),
         help="Path to write model trial Excel results.",
     )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Maximum number of trial rows to run. Leave unset to run all input rows.",
+    )
     return parser.parse_args(argv)
 
 
@@ -45,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     caller = build_chat_json_model_caller(runtime_settings)
-    summary = run_trial_from_files(args.input, args.output, caller)
+    summary = run_trial_from_files(args.input, args.output, caller, limit=args.limit)
     print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
     print(f"结果已写入：{args.output}")
     return 0
