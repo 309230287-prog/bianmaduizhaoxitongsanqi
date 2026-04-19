@@ -10,8 +10,11 @@ def test_one_click_windows_launcher_exists_and_points_to_python_start_script() -
     launcher = REPO_ROOT / "启动商品匹配系统.bat"
 
     assert launcher.exists()
-    content = launcher.read_text(encoding="utf-8")
+    raw_content = launcher.read_bytes()
+    content = raw_content.decode("utf-8")
 
+    assert b"\r\n" in raw_content
+    assert b"\n" not in raw_content.replace(b"\r\n", b"")
     assert "chcp 65001" in content
     assert "PYTHONUTF8=1" in content
     assert "PYTHONPATH=%APP_ROOT%src" in content
