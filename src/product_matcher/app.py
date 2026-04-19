@@ -132,6 +132,11 @@ async def phase2_workbench(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "index.html", _build_context(show_phase2=True))
 
 
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "settings.html", _build_context())
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -161,7 +166,7 @@ async def save_settings(request: Request) -> HTMLResponse:
             settings_error_message=str(exc),
             model_settings=_build_settings_preview(form, existing_settings),
         )
-    return templates.TemplateResponse(request, "index.html", context)
+    return templates.TemplateResponse(request, "settings.html", context)
 
 
 @app.post("/settings/test", response_class=HTMLResponse)
@@ -187,7 +192,7 @@ async def test_settings(request: Request) -> HTMLResponse:
             settings_error_message=str(exc),
             model_settings=_build_settings_preview(form, existing_settings),
         )
-    return templates.TemplateResponse(request, "index.html", context)
+    return templates.TemplateResponse(request, "settings.html", context)
 
 
 @app.post("/settings/reset", response_class=HTMLResponse)
@@ -204,7 +209,7 @@ async def reset_settings(request: Request) -> HTMLResponse:
         settings_success_message="模型配置已恢复为推荐值。",
         model_settings=model_settings_service.describe_model_settings(saved_settings),
     )
-    return templates.TemplateResponse(request, "index.html", context)
+    return templates.TemplateResponse(request, "settings.html", context)
 
 
 @app.post("/preview", response_class=HTMLResponse)

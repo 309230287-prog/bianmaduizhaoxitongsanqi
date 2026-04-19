@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>模型设置 - 商品智能匹配系统</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='/favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
+</head>
+<body>
+  <main class="page settings-page">
+    <section class="hero card compact-hero">
+      <p class="eyebrow">Settings</p>
+      <h1>模型设置</h1>
+      <p class="lead">这里像 IDE 设置页一样，只处理模型、接口和 Key；业务工作台保持干净。</p>
+      <div class="actions">
+        <a class="download-link" href="/">返回首页</a>
+        <a class="download-link" href="/phase2">进入二期工作台</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Current Runtime</p>
+          <h2>当前模型状态</h2>
+        </div>
+        <span class="model-pill">{{ model_settings.provider_label }} / {{ model_settings.production_model_name }}</span>
+      </div>
+      <div class="settings-summary">
+        <div class="summary-chip">
+          <span>当前提供方</span>
+          <strong>{{ model_settings.provider_label }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>当前选择</span>
+          <strong>{{ model_settings.model_selection_id }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>当前模型</span>
+          <strong>{{ model_settings.production_model_name }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>Key 来源</span>
+          <strong>{{ model_settings.api_key_display }}</strong>
+        </div>
+      </div>
+      {% if settings_warning_message %}
+      <div class="alert info">{{ settings_warning_message }}</div>
+      {% endif %}
+      {% if settings_error_message %}
+      <div class="alert error">{{ settings_error_message }}</div>
+      {% endif %}
+      {% if settings_success_message %}
+      <div class="alert success">{{ settings_success_message }}</div>
+      {% endif %}
+      {% if pipeline_status_message %}
+      <div class="alert info">{{ pipeline_status_message }}</div>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <form class="settings-form" action="/settings/save" method="post" id="settings-form">
+        <div class="model-picker">
+          <div class="model-picker-heading">
+            <div>
+              <p class="eyebrow">Model Picker</p>
+              <h3>模型选择器</h3>
+            </div>
+            <span class="model-pill">{{ model_settings.provider_label }} / {{ model_settings.production_model_name }}</span>
+          </div>
+          <div class="model-picker-groups">
+            {% for group in model_settings.model_picker_groups %}
+            <fieldset class="model-group">
+              <legend>{{ group.label }}</legend>
+              {% for option in group.options %}
+              <label
+                class="model-option {% if model_settings.model_selection_id == option.selection_id %}selected{% endif %}"
+                data-model-option
+                data-provider-name="{{ option.provider_name }}"
+                data-base-url="{{ option.base_url }}"
+                data-model-name="{{ option.model_name }}"
+                data-api-key-env-name="{{ option.api_key_env_name }}"
+                data-custom="{{ 'true' if option.custom else 'false' }}"
+              >
+                <input
+                  type="radio"
+                  name="model_selection_id"
+                  value="{{ option.selection_id }}"
+                  {% if model_settings.model_selection_id == option.selection_id %}checked{% endif %}
+                >
+                <span class="model-option-main">
+                  <strong>{{ option.label }}</strong>
+                  <small>{{ option.description }}</small>
+                </span>
+                <span class="model-tags">
+                  {% for tag in option.tags %}
+                  <span class="model-tag">{{ tag }}</span>
+                  {% endfor %}
+                </span>
+              </label>
+              {% endfor %}
+            </fieldset>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="settings-grid">
+          <label>
+            <span>模型提供方</span>
+            <select name="provider_name" id="provider-name">
+              <option value="bailian" {% if model_settings.provider_name == "bailian" %}selected{% endif %}>阿里云百炼</option>
+              <option value="deepseek" {% if model_settings.provider_name == "deepseek" %}selected{% endif %}>DeepSeek</option>
+              <option value="openai_compatible" {% if model_settings.provider_name == "openai_compatible" %}selected{% endif %}>OpenAI Compatible</option>
+            </select>
+          </label>
+          <label>
+            <span>Base URL</span>
+            <input type="text" name="base_url" id="base-url" value="{{ model_settings.base_url }}" required>
+          </label>
+          <label>
+            <span>生产模型名</span>
+            <input type="text" name="production_model_name" id="production-model-name" value="{{ model_settings.production_model_name }}" required>
+          </label>
+          <label>
+            <span>API Key 来源</span>
+            <select name="api_key_source" id="api-key-source">
+              <option value="env" {% if model_settings.api_key_source == "env" %}selected{% endif %}>环境变量</option>
+              <option value="local_config" {% if model_settings.api_key_source == "local_config" %}selected{% endif %}>本地保存</option>
+            </select>
+          </label>
+          <label id="env-name-field">
+            <span>环境变量名</span>
+            <input type="text" name="api_key_env_name" id="api-key-env-name" value="{{ model_settings.api_key_env_name }}">
+          </label>
+          <label id="api-key-field">
+            <span>API Key</span>
+            <input type="password" name="api_key_value" value="" placeholder="{% if model_settings.local_key_saved %}已保存，留空则保留当前值{% else %}请输入 API Key{% endif %}">
+          </label>
+          <label>
+            <span>请求超时（秒）</span>
+            <input type="number" name="timeout_seconds" min="1" value="{{ model_settings.timeout_seconds }}" required>
+          </label>
+          <label>
+            <span>失败重试次数</span>
+            <input type="number" name="max_retries" min="0" value="{{ model_settings.max_retries }}" required>
+          </label>
+        </div>
+        <div class="actions split">
+          <button type="submit">保存配置</button>
+          <button type="submit" formaction="/settings/test">测试连接</button>
+          <button type="submit" formaction="/settings/reset" class="secondary">恢复推荐值</button>
+        </div>
+      </form>
+    </section>
+  </main>
+  <script>
+    const apiKeySourceSelect = document.getElementById('api-key-source');
+    const envNameField = document.getElementById('env-name-field');
+    const apiKeyField = document.getElementById('api-key-field');
+
+    function syncApiKeyFields() {
+      if (!apiKeySourceSelect) {
+        return;
+      }
+      const isEnv = apiKeySourceSelect.value === 'env';
+      if (envNameField) {
+        envNameField.style.display = isEnv ? 'block' : 'none';
+      }
+      if (apiKeyField) {
+        apiKeyField.style.display = isEnv ? 'none' : 'block';
+      }
+    }
+
+    if (apiKeySourceSelect) {
+      apiKeySourceSelect.addEventListener('change', syncApiKeyFields);
+      syncApiKeyFields();
+    }
+
+    const providerNameSelect = document.getElementById('provider-name');
+    const baseUrlInput = document.getElementById('base-url');
+    const productionModelNameInput = document.getElementById('production-model-name');
+    const apiKeyEnvNameInput = document.getElementById('api-key-env-name');
+
+    function syncModelSelectionFields(event) {
+      const input = event.target;
+      const option = input.closest('[data-model-option]');
+      if (!option) {
+        return;
+      }
+      const isCustom = option.dataset.custom === 'true';
+      if (providerNameSelect && option.dataset.providerName) {
+        providerNameSelect.value = option.dataset.providerName;
+      }
+      if (apiKeyEnvNameInput && option.dataset.apiKeyEnvName) {
+        apiKeyEnvNameInput.value = option.dataset.apiKeyEnvName;
+      }
+      if (!isCustom && baseUrlInput && option.dataset.baseUrl) {
+        baseUrlInput.value = option.dataset.baseUrl;
+      }
+      if (!isCustom && productionModelNameInput && option.dataset.modelName) {
+        productionModelNameInput.value = option.dataset.modelName;
+      }
+    }
+
+    document.querySelectorAll('input[name="model_selection_id"]').forEach((input) => {
+      input.addEventListener('change', syncModelSelectionFields);
+    });
+  </script>
+</body>
+</html>

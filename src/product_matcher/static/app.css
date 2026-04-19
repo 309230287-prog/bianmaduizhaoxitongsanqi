@@ -373,6 +373,52 @@ button.secondary {
 .download-link:hover {
   filter: brightness(1.05);
 }
+.compact-toolbar {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) 1fr auto;
+  align-items: center;
+  gap: 16px;
+}
+.compact-toolbar .settings-summary,
+.compact-toolbar .alert,
+.compact-toolbar .actions {
+  margin-top: 0;
+}
+.operation-guide {
+  background: linear-gradient(135deg, rgba(255, 252, 246, 0.96), rgba(235, 244, 255, 0.92));
+}
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+.step-card {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+.step-number {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+}
+.step-card h3 {
+  margin: 12px 0 8px;
+}
+.step-card p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+.step-card a {
+  color: var(--accent);
+  font-weight: 800;
+}
 
 @media (max-width: 720px) {
   .page {
@@ -384,5 +430,6 @@ button.secondary {
     border-radius: 16px;
   }
   .phase2-form { grid-template-columns: 1fr; }
+  .compact-toolbar { grid-template-columns: 1fr; }
   .actions.split { flex-direction: column; }
 }

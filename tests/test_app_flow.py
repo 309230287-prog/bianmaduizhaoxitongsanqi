@@ -40,7 +40,7 @@ class _FakeUrlOpenResponse:
 
 
 class AppFlowTests(unittest.TestCase):
-    def test_home_can_save_and_test_model_settings(self) -> None:
+    def test_settings_page_can_save_and_test_model_settings(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             settings_dir = tmp_path / "settings"
@@ -55,12 +55,20 @@ class AppFlowTests(unittest.TestCase):
                  patch.object(logging_service, "ACTION_LOG_FILE", log_dir / "actions.jsonl"):
                 home = client.get("/")
                 self.assertEqual(home.status_code, 200)
-                self.assertIn("模型设置", home.text)
-                self.assertIn("模型选择器", home.text)
-                self.assertIn('name="model_selection_id"', home.text)
-                self.assertIn("bailian:qwen-plus", home.text)
-                self.assertIn("data-model-option", home.text)
-                self.assertIn("syncModelSelectionFields", home.text)
+                self.assertIn("模型状态", home.text)
+                self.assertIn('href="/settings"', home.text)
+                self.assertIn("一期旧上传流程（可选）", home.text)
+                self.assertIn("二期不用从这里开始", home.text)
+                self.assertNotIn('name="model_selection_id"', home.text)
+
+                settings_page = client.get("/settings")
+                self.assertEqual(settings_page.status_code, 200)
+                self.assertIn("模型设置", settings_page.text)
+                self.assertIn("模型选择器", settings_page.text)
+                self.assertIn('name="model_selection_id"', settings_page.text)
+                self.assertIn("bailian:qwen-plus", settings_page.text)
+                self.assertIn("data-model-option", settings_page.text)
+                self.assertIn("syncModelSelectionFields", settings_page.text)
 
                 save_response = client.post(
                     "/settings/save",
@@ -319,6 +327,10 @@ class AppFlowTests(unittest.TestCase):
                  }):
                 home = client.get("/phase2")
                 self.assertEqual(home.status_code, 200)
+                self.assertIn("怎么操作", home.text)
+                self.assertIn("1. 确认模型", home.text)
+                self.assertIn("2. 运行真实批量", home.text)
+                self.assertIn("3. 下载结果", home.text)
                 self.assertIn("二期真实批量落码", home.text)
                 self.assertIn("/phase2/batch", home.text)
 
