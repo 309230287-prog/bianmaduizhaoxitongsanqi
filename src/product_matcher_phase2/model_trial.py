@@ -129,27 +129,102 @@ def apply_payload_safety_gate(payload: dict[str, Any], decision: ModelDecision) 
     customer_record = payload.get("customer_record") or {}
     mapped_fields = customer_record.get("mapped_fields") if isinstance(customer_record, dict) else {}
     customer_spec = str((mapped_fields or {}).get("spec", "")).strip() if isinstance(mapped_fields, dict) else ""
+    customer_unit = str((mapped_fields or {}).get("unit", "")).strip() if isinstance(mapped_fields, dict) else ""
     customer_spec_tokens = extract_spec_tokens(customer_spec)
+    selected_candidate = _selected_candidate_payload(payload, decision.selected_candidate_id)
+    candidate_evidence = selected_candidate.get("candidate_evidence") if selected_candidate else {}
+
+    candidate_unit = _candidate_unit(selected_candidate, candidate_evidence)
+    if customer_unit and candidate_unit and customer_unit != candidate_unit:
+        return _downgrade_auto_decision(
+            decision,
+            status=ResultStatus.MANUAL_REVIEW,
+            risk=RiskFlag.UNIT_CONFLICT,
+            reason=f"安全闸拦截：单位冲突，客户单位={customer_unit}，候选单位={candidate_unit}，不能自动落码。",
+        )
+
     if not customer_spec_tokens:
         return decision
 
-    selected_candidate = _selected_candidate_payload(payload, decision.selected_candidate_id)
-    candidate_evidence = selected_candidate.get("candidate_evidence") if selected_candidate else {}
     candidate_spec_tokens = set(candidate_evidence.get("spec_tokens") or []) if isinstance(candidate_evidence, dict) else set()
-    if customer_spec_tokens.intersection(candidate_spec_tokens):
-        return decision
+    if not _spec_tokens_match(customer_spec_tokens, candidate_spec_tokens):
+        status = ResultStatus.SUGGESTED_CODE if not candidate_spec_tokens else ResultStatus.MANUAL_REVIEW
+        reason = (
+            "安全闸拦截：客户有明确规格，但选中候选缺少与客户规格匹配的证据，不能自动落码。"
+            if not candidate_spec_tokens
+            else "安全闸拦截：规格或包装层级不一致，不能自动落码。"
+        )
+        return _downgrade_auto_decision(decision, status=status, risk=RiskFlag.SPEC_CONFLICT, reason=reason)
 
+    duplicate_count = sum(
+        1
+        for candidate in payload.get("candidate_products", [])
+        if _candidate_has_same_identity_evidence(candidate, customer_unit, customer_spec_tokens)
+    )
+    if duplicate_count > 1:
+        return _downgrade_auto_decision(
+            decision,
+            status=ResultStatus.MANUAL_REVIEW,
+            risk=RiskFlag.MULTIPLE_VALID_CANDIDATES,
+            reason="安全闸拦截：多个候选都具备同一商品身份证据，不能自动落码。",
+        )
+
+    return decision
+
+
+def _downgrade_auto_decision(
+    decision: ModelDecision,
+    *,
+    status: ResultStatus,
+    risk: RiskFlag,
+    reason: str,
+) -> ModelDecision:
     downgraded = decision.model_dump(mode="json")
-    downgraded["result_status"] = ResultStatus.SUGGESTED_CODE.value
+    downgraded["result_status"] = status.value
     downgraded["can_auto_code"] = False
-    risk_flags = list(dict.fromkeys([*downgraded.get("risk_flags", []), RiskFlag.SPEC_CONFLICT.value]))
+    risk_flags = list(dict.fromkeys([*downgraded.get("risk_flags", []), risk.value]))
     downgraded["risk_flags"] = risk_flags
-    reason = "安全闸拦截：客户有明确规格，但选中候选缺少与客户规格匹配的证据，不能自动落码。"
     downgraded["manual_review_reason"] = reason
     downgraded["evidence_summary"] = "；".join(
         part for part in [str(downgraded.get("evidence_summary", "")).strip(), reason] if part
     )
     return ModelDecision.model_validate(downgraded)
+
+
+def _spec_tokens_match(customer_tokens: set[str], candidate_tokens: set[str]) -> bool:
+    if not customer_tokens:
+        return True
+    composite_tokens = {token for token in customer_tokens if "*" in token}
+    if composite_tokens:
+        return bool(composite_tokens.intersection(candidate_tokens))
+    return bool(customer_tokens.intersection(candidate_tokens))
+
+
+def _candidate_unit(candidate: dict[str, Any], candidate_evidence: object) -> str:
+    if isinstance(candidate_evidence, dict) and candidate_evidence.get("unit"):
+        return str(candidate_evidence.get("unit", "")).strip()
+    product = candidate.get("product") if isinstance(candidate, dict) else {}
+    return str((product or {}).get("unit", "")).strip() if isinstance(product, dict) else ""
+
+
+def _candidate_has_same_identity_evidence(
+    candidate: dict[str, Any],
+    customer_unit: str,
+    customer_spec_tokens: set[str],
+) -> bool:
+    evidence = candidate.get("candidate_evidence") if isinstance(candidate, dict) else {}
+    if not isinstance(evidence, dict):
+        return False
+    match_sources = set(evidence.get("match_sources") or [])
+    if not match_sources.intersection({"name_exact", "name_contains", "name_terms_match"}):
+        return False
+    if customer_unit and _candidate_unit(candidate, evidence) != customer_unit:
+        return False
+    candidate_spec_tokens = set(evidence.get("spec_tokens") or [])
+    if customer_spec_tokens and not _spec_tokens_match(customer_spec_tokens, candidate_spec_tokens):
+        return False
+    conflict_notes = [str(note) for note in evidence.get("conflict_notes") or []]
+    return not conflict_notes
 
 
 def _selected_candidate_payload(payload: dict[str, Any], selected_candidate_id: str) -> dict[str, Any]:

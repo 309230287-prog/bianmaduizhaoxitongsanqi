@@ -248,6 +248,114 @@ class ModelTrialTests(unittest.TestCase):
         self.assertFalse(summarize_trial_results([result])["unsafe_auto_code_count"])
         self.assertIn("候选缺少与客户规格匹配的证据", result.manual_review_reason)
 
+    def test_run_trial_cases_blocks_auto_code_when_selected_candidate_unit_conflicts(self) -> None:
+        case = ModelTrialCase(
+            sample_id="UNIT001",
+            sample_group="manual_review",
+            expected_company_code="C000001",
+            expected_result_status="manual_review",
+            payload={
+                "customer_record": {"mapped_fields": {"name": "海天金标生抽", "unit": "件"}},
+                "candidate_products": [
+                    {
+                        "candidate_id": "K000001",
+                        "candidate_evidence": {"unit": "瓶", "match_sources": ["name_exact"]},
+                        "product": {"code": "C000001", "name": "海天金标生抽", "unit": "瓶"},
+                    }
+                ],
+            },
+        )
+
+        result = run_trial_cases([case], self._strong_auto_model)[0]
+
+        self.assertEqual(result.parsed_result_status, "manual_review")
+        self.assertFalse(result.can_auto_code)
+        self.assertIn("单位冲突", result.manual_review_reason)
+
+    def test_run_trial_cases_blocks_auto_code_when_package_spec_conflicts_despite_volume_overlap(self) -> None:
+        case = ModelTrialCase(
+            sample_id="SPEC001",
+            sample_group="manual_review",
+            expected_company_code="C000001",
+            expected_result_status="manual_review",
+            payload={
+                "customer_record": {"mapped_fields": {"name": "海天金标生抽", "spec": "1*6*1.9L", "unit": "件"}},
+                "candidate_products": [
+                    {
+                        "candidate_id": "K000001",
+                        "candidate_evidence": {
+                            "unit": "件",
+                            "spec_tokens": ["1*1.9l", "1.9l"],
+                            "match_sources": ["name_contains", "spec_in_product_text", "unit_match"],
+                        },
+                        "product": {"code": "C000001", "name": "海天金标生抽1*1.9L", "unit": "件"},
+                    }
+                ],
+            },
+        )
+
+        result = run_trial_cases([case], self._strong_auto_model)[0]
+
+        self.assertEqual(result.parsed_result_status, "manual_review")
+        self.assertFalse(result.can_auto_code)
+        self.assertIn("规格或包装层级不一致", result.manual_review_reason)
+
+    def test_run_trial_cases_blocks_auto_code_when_multiple_candidates_have_same_identity_evidence(self) -> None:
+        case = ModelTrialCase(
+            sample_id="DUP001",
+            sample_group="manual_review",
+            expected_company_code="C000001",
+            expected_result_status="manual_review",
+            payload={
+                "customer_record": {"mapped_fields": {"name": "海天金标生抽", "spec": "1*6*1.9L", "unit": "件"}},
+                "candidate_products": [
+                    {
+                        "candidate_id": "K000001",
+                        "candidate_evidence": {
+                            "unit": "件",
+                            "spec_tokens": ["1*6*1.9l", "1.9l"],
+                            "match_sources": ["name_contains", "spec_in_product_text", "unit_match"],
+                        },
+                        "product": {"code": "C000001", "name": "海天金标生抽1*6*1.9L", "unit": "件"},
+                    },
+                    {
+                        "candidate_id": "K000002",
+                        "candidate_evidence": {
+                            "unit": "件",
+                            "spec_tokens": ["1*6*1.9l", "1.9l"],
+                            "match_sources": ["name_contains", "spec_in_product_text", "unit_match"],
+                        },
+                        "product": {"code": "C000002", "name": "海天金标生抽1*6*1.9L-副本", "unit": "件"},
+                    },
+                ],
+            },
+        )
+
+        result = run_trial_cases([case], self._strong_auto_model)[0]
+
+        self.assertEqual(result.parsed_result_status, "manual_review")
+        self.assertFalse(result.can_auto_code)
+        self.assertIn("多个候选", result.manual_review_reason)
+
+    def _strong_auto_model(self, _payload):
+        return {
+            "customer_semantic_summary": "模型认为可自动。",
+            "candidate_assessments": [
+                {
+                    "candidate_id": "K000001",
+                    "same_business_identity": True,
+                    "risk_flags": [],
+                    "summary": "模型误认为可自动。",
+                }
+            ],
+            "selected_candidate_id": "K000001",
+            "result_status": "strong_auto_code",
+            "risk_flags": [],
+            "evidence_summary": "模型判断可自动。",
+            "manual_review_reason": "",
+            "can_auto_code": True,
+        }
+
 
 if __name__ == "__main__":
     unittest.main()
