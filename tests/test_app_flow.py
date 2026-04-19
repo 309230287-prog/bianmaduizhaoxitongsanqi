@@ -108,20 +108,27 @@ class AppFlowTests(unittest.TestCase):
         response = client.get("/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("最近二期诊断", response.text)
-        self.assertIn("schema_validation_error", response.text)
-        self.assertIn("schema_valid_after_normalization", response.text)
-        self.assertIn("business_rule_validation_error", response.text)
-        self.assertIn("8", response.text)
-        self.assertIn("model_call_error", response.text)
-        self.assertIn("1", response.text)
-        self.assertIn("诊断红线", response.text)
-        self.assertIn("unsafe_auto_code_count", response.text)
-        self.assertIn("selected_code_mismatch_count", response.text)
-        self.assertIn("当前解析器重算", response.text)
-        self.assertIn("current_parser_valid_count", response.text)
-        self.assertIn("current_selected_code_match_count", response.text)
-        self.assertIn("该报告说明模型试跑未通过，不代表模型验证成功。", response.text)
+        self.assertIn("二期工作台", response.text)
+        self.assertIn('href="/phase2"', response.text)
+        self.assertNotIn("最近二期诊断", response.text)
+
+        phase2 = client.get("/phase2")
+
+        self.assertEqual(phase2.status_code, 200)
+        self.assertIn("最近二期诊断", phase2.text)
+        self.assertIn("schema_validation_error", phase2.text)
+        self.assertIn("schema_valid_after_normalization", phase2.text)
+        self.assertIn("business_rule_validation_error", phase2.text)
+        self.assertIn("8", phase2.text)
+        self.assertIn("model_call_error", phase2.text)
+        self.assertIn("1", phase2.text)
+        self.assertIn("诊断红线", phase2.text)
+        self.assertIn("unsafe_auto_code_count", phase2.text)
+        self.assertIn("selected_code_mismatch_count", phase2.text)
+        self.assertIn("当前解析器重算", phase2.text)
+        self.assertIn("current_parser_valid_count", phase2.text)
+        self.assertIn("current_selected_code_match_count", phase2.text)
+        self.assertIn("该报告说明模型试跑未通过，不代表模型验证成功。", phase2.text)
 
     def test_home_shows_placeholder_when_phase2_diagnostics_report_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -129,7 +136,7 @@ class AppFlowTests(unittest.TestCase):
             client = TestClient(app)
 
             with patch.object(app_module, "PHASE2_TRIAL_DIAGNOSTICS_FILE", missing_report):
-                response = client.get("/")
+                response = client.get("/phase2")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("最近二期诊断", response.text)
@@ -223,7 +230,7 @@ class AppFlowTests(unittest.TestCase):
                  )), \
                  patch.object(app_module, "build_chat_json_model_caller", side_effect=fake_build_caller), \
                  patch.object(app_module, "run_trial_from_files", side_effect=fake_run_trial):
-                home = client.get("/")
+                home = client.get("/phase2")
                 self.assertEqual(home.status_code, 200)
                 self.assertIn("二期语义工作台", home.text)
                 self.assertIn("/phase2/trial", home.text)
@@ -310,7 +317,7 @@ class AppFlowTests(unittest.TestCase):
                      "unmatched_count": 0,
                      "model_error_count": 0,
                  }):
-                home = client.get("/")
+                home = client.get("/phase2")
                 self.assertEqual(home.status_code, 200)
                 self.assertIn("二期真实批量落码", home.text)
                 self.assertIn("/phase2/batch", home.text)

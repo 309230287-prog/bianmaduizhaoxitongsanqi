@@ -143,6 +143,23 @@
       </form>
     </section>
 
+    {% if not show_phase2 %}
+    <section class="card phase2-card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Phase 2</p>
+          <h2>二期工作台</h2>
+        </div>
+        <span class="model-pill">独立入口</span>
+      </div>
+      <p class="muted">二期大模型语义落码已经拆到独立工作台，不再和一期上传匹配界面挤在一起。</p>
+      <div class="actions">
+        <a class="download-link" href="/phase2">进入二期工作台</a>
+      </div>
+    </section>
+    {% endif %}
+
+    {% if show_phase2 %}
     <section class="card phase2-card">
       <div class="section-heading">
         <div>
@@ -384,7 +401,9 @@
       </div>
     </section>
     {% endif %}
+    {% endif %}
 
+    {% if not show_phase2 %}
     <section class="card">
       <h2>上传两份商品库</h2>
       <form class="upload-form" action="/preview" method="post" enctype="multipart/form-data">
@@ -686,6 +705,7 @@
         </table>
       </div>
     </section>
+    {% endif %}
     {% endif %}
   </main>
   <script>

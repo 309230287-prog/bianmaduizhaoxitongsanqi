@@ -127,6 +127,11 @@ async def home(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "index.html", _build_context())
 
 
+@app.get("/phase2", response_class=HTMLResponse)
+async def phase2_workbench(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "index.html", _build_context(show_phase2=True))
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -384,6 +389,7 @@ async def start_phase2_trial(
         sample_limit=sample_limit,
     )
     context = _build_context(
+        show_phase2=True,
         phase2_trial_job=phase2_job,
         phase2_trial_message="二期语义试跑任务已创建，页面会自动刷新进度。",
     )
@@ -421,6 +427,7 @@ async def start_phase2_batch(
         candidate_limit=candidate_limit,
     )
     context = _build_context(
+        show_phase2=True,
         phase2_batch_job=phase2_batch_job,
         phase2_batch_message="二期真实批量任务已创建，页面会自动刷新进度。",
     )
@@ -690,6 +697,7 @@ def _build_context(**overrides):
         "match_engine_message": None,
         "match_engine_fallback": None,
         "export_job": None,
+        "show_phase2": False,
         "phase2_trial_input_path": str(PHASE2_TRIAL_INPUT_FILE),
         "phase2_batch_customer_path": str(PHASE2_BATCH_CUSTOMER_FILE),
         "phase2_batch_company_path": str(PHASE2_BATCH_COMPANY_FILE),
