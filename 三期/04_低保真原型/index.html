@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>商品编码对照系统 - 三期 3.1 低保真原型</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Phase 3.1 Prototype</p>
+          <h1>商品编码对照系统</h1>
+          <p class="subtitle">先跑通主线闭环：初始化配置、导入、候选、解释、人工确认、导出。</p>
+        </div>
+        <div class="system-strip" aria-label="系统状态">
+          <span class="status ok">配置正常</span>
+          <span class="status warn">我司库待确认</span>
+          <span class="status idle">低保真 Demo</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="sidebar" aria-label="流程导航">
+          <div class="sidebar-title">
+            <span class="dot"></span>
+            <strong>3.1 主线画像</strong>
+          </div>
+          <nav id="stepNav" class="step-nav"></nav>
+          <div class="sidebar-note">
+            <strong>说明</strong>
+            <p>这个原型只确认产品流程和页面画像，不接真实 Excel，不调用模型。</p>
+          </div>
+        </aside>
+
+        <section class="stage">
+          <div class="stage-header">
+            <div>
+              <p id="flowLabel" class="eyebrow">A. 首次启动和初始化配置</p>
+              <h2 id="screenTitle">初始化配置</h2>
+            </div>
+            <div class="stage-actions">
+              <button id="prevBtn" class="ghost-button" type="button">上一步</button>
+              <button id="nextBtn" class="primary-button" type="button">下一步</button>
+            </div>
+          </div>
+          <div id="screen" class="screen-card"></div>
+        </section>
+
+        <aside class="inspector" aria-label="右侧说明">
+          <div class="inspector-block">
+            <p class="eyebrow">当前页面要回答</p>
+            <ul id="goalList"></ul>
+          </div>
+          <div class="inspector-block">
+            <p class="eyebrow">风险提醒</p>
+            <ul id="riskList"></ul>
+          </div>
+          <div class="inspector-block">
+            <p class="eyebrow">本页产出</p>
+            <ul id="outputList"></ul>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
