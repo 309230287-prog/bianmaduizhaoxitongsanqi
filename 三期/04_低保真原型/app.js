@@ -249,24 +249,24 @@ const steps = [
     flow: "B. 日常商品编码对照",
     title: "导出编码对照表",
     nav: "导出",
-    goals: ["基于客户原始 Excel 追加结果列", "不覆盖原文件", "导出业务人员能看懂的中文表"],
-    risks: ["必须人工审核不能伪造编码", "导出目录不可写要提示", "文件被占用要可恢复"],
+    goals: ["保留客户原始表格", "在客户原始列后追加结果列", "导出业务人员能看懂的中文表"],
+    risks: ["不能导出成只有结果字段的新表", "必须人工审核不能伪造编码", "文件被占用要可恢复"],
     outputs: ["编码对照结果 Excel", "导出记录", "操作日志"],
     render: () => `
       <div class="wireframe">
         <div class="panel">
           <div class="panel-title"><div><p class="eyebrow">Export</p><h3>导出前确认</h3></div><button class="primary-button" type="button">导出 Excel</button></div>
           <table class="table-mock">
-            <thead><tr><th>客户商品</th><th>对照状态</th><th>我司编码</th><th>推荐理由</th><th>人工备注</th></tr></thead>
+            <thead><tr><th>客户原始列：编号</th><th>客户原始列：商品名称</th><th>客户原始列：规格</th><th>客户原始列：单位</th><th>追加列：对照状态</th><th>追加列：我司编码</th><th>追加列：推荐理由</th><th>追加列：人工备注</th></tr></thead>
             <tbody>
-              <tr><td>海天金标生抽</td><td><span class="tag green">自动落码</span></td><td>SPU100294</td><td>品牌、品名、规格、单位均覆盖</td><td></td></tr>
-              <tr><td>可口可乐 1*24*330ml</td><td><span class="tag red">必须人工审核</span></td><td>不回填</td><td>包装层级可能影响结算</td><td>待采购确认</td></tr>
-              <tr><td>未知商品 A</td><td><span class="tag">未找到可靠匹配</span></td><td>不回填</td><td>候选均存在核心冲突</td><td></td></tr>
+              <tr><td>KH-001</td><td>海天金标生抽</td><td>500ml</td><td>瓶</td><td><span class="tag green">自动落码</span></td><td>SPU100294</td><td>品牌、品名、规格、单位均覆盖</td><td></td></tr>
+              <tr><td>KH-002</td><td>可口可乐</td><td>1*24*330ml</td><td>件</td><td><span class="tag red">必须人工审核</span></td><td>不回填</td><td>包装层级可能影响结算</td><td>待采购确认</td></tr>
+              <tr><td>KH-003</td><td>未知商品 A</td><td></td><td>包</td><td><span class="tag">未找到可靠匹配</span></td><td>不回填</td><td>候选均存在核心冲突</td><td></td></tr>
             </tbody>
           </table>
         </div>
         <div class="split-2">
-          <div class="panel tight"><p class="eyebrow">导出文件</p><h3>客户商品库_编码对照结果.xlsx</h3><p class="muted">不会覆盖原始文件</p></div>
+          <div class="panel tight"><p class="eyebrow">导出文件</p><h3>客户商品库_编码对照结果.xlsx</h3><p class="muted">保留客户原始列，在后面追加结果列，不覆盖原始文件。</p></div>
           <div class="panel tight"><p class="eyebrow">结果统计</p><span class="tag green">自动 128</span><span class="tag blue">待确认 42</span><span class="tag red">人工 8</span><span class="tag">未匹配 3</span></div>
         </div>
       </div>
