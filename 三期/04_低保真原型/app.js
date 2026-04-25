@@ -4,9 +4,9 @@ const steps = [
     flow: "首页入口",
     title: "首页工作台",
     nav: "首页",
-    goals: ["让用户知道系统是否能用", "把初始化和业务入口分开", "显示我司库、模型、最近任务状态"],
+    goals: ["让用户知道系统是否能用", "把基础资料和客户任务分开", "提供新建任务和继续下一轮入口"],
     risks: ["配置异常时不能直接进入智能对照", "业务人员不能看到一堆技术词", "首页不能变成杂乱仪表盘"],
-    outputs: ["配置状态", "模型状态", "我司库状态", "主要入口"],
+    outputs: ["配置状态", "模型状态", "我司库状态", "任务入口"],
     render: () => `
       <div class="wireframe">
         <div class="hero-panel">
@@ -14,37 +14,36 @@ const steps = [
             <div class="panel-title">
               <div>
                 <p class="eyebrow">Workbench</p>
-                <h3>今天要做哪类编码对照？</h3>
+                <h3>今天要做什么？</h3>
               </div>
               <span class="tag green">配置正常</span>
             </div>
             <div class="flow-row">
-              <button class="primary-button" type="button">开始商品对照</button>
+              <button class="primary-button" type="button">新建对照任务</button>
+              <button class="ghost-button" type="button">继续历史任务 / 开始下一轮</button>
               <button class="ghost-button" type="button">更新我司商品库</button>
-              <button class="ghost-button" type="button">手工输入商品</button>
               <button class="ghost-button" type="button">系统设置</button>
             </div>
           </div>
           <div class="panel">
             <p class="eyebrow">Status</p>
             <div class="status-grid">
-              <div class="status-tile"><span class="tag green">模型</span><strong>DeepSeek 已配置</strong><p class="muted">用于候选解释和风险判断</p></div>
-              <div class="status-tile"><span class="tag warn">我司库</span><strong>11522 条</strong><p class="muted">字段待复核 2 项</p></div>
-              <div class="status-tile"><span class="tag blue">最近任务</span><strong>客户食堂库</strong><p class="muted">2581 条记录</p></div>
-              <div class="status-tile"><span class="tag">导出</span><strong>默认目录可用</strong><p class="muted">中文路径检查通过</p></div>
+              <div class="status-tile"><span class="tag green">模型</span><strong>DeepSeek 已配置</strong><p class="muted">用于中文解释和风险判断</p></div>
+              <div class="status-tile"><span class="tag green">我司库</span><strong>11522 条</strong><p class="muted">基础资料已确认</p></div>
+              <div class="status-tile"><span class="tag blue">最近任务</span><strong>客户食堂库</strong><p class="muted">第 1 轮已完成，可开始第 2 轮</p></div>
+              <div class="status-tile"><span class="tag">导出</span><strong>默认目录可用</strong><p class="muted">文件导入导出自检通过</p></div>
             </div>
           </div>
         </div>
         <div class="panel tight">
           <div class="flow-row">
             <span class="flow-chip">初始化配置</span>
-            <span class="flow-chip">我司库</span>
-            <span class="flow-chip">客户库</span>
-            <span class="flow-chip">字段确认</span>
-            <span class="flow-chip">开始第一轮</span>
-            <span class="flow-chip">候选解释</span>
-            <span class="flow-chip">人工确认</span>
-            <span class="flow-chip">导出</span>
+            <span class="flow-chip">更新我司库</span>
+            <span class="flow-chip">新建任务</span>
+            <span class="flow-chip">运行看板</span>
+            <span class="flow-chip">导出 Excel</span>
+            <span class="flow-chip">人工加工</span>
+            <span class="flow-chip">开始下一轮</span>
           </div>
         </div>
       </div>
@@ -56,7 +55,7 @@ const steps = [
     title: "初始化配置",
     nav: "初始化",
     goals: ["确认模型和目录可用", "让用户知道哪些能力已经准备好", "配置异常时阻止进入智能对照"],
-    risks: ["API Key 不能明文暴露", "测试连接不发送真实客户数据", "中文路径必须提前检查"],
+    risks: ["API Key 不能明文暴露", "测试连接不发送真实客户数据", "中文文件名和导入导出必须提前检查"],
     outputs: ["模型配置状态", "目录配置状态", "连接测试结果"],
     render: () => `
       <div class="wireframe">
@@ -79,11 +78,11 @@ const steps = [
           <div class="flow-row" style="margin-top:18px">
             <button class="primary-button" type="button">测试模型连接</button>
             <button class="ghost-button" type="button">保存配置</button>
-            <button class="mini-button" type="button">检查中文路径</button>
+            <button class="mini-button" type="button">文件导入导出自检</button>
           </div>
         </div>
         <div class="split-2">
-          <div class="panel tight"><p class="eyebrow">通过项</p><span class="tag green">默认目录可写</span><span class="tag green">日志目录可写</span><span class="tag green">中文路径通过</span></div>
+          <div class="panel tight"><p class="eyebrow">通过项</p><span class="tag green">默认目录可写</span><span class="tag green">日志目录可写</span><span class="tag green">中文文件名可用</span></div>
           <div class="panel tight"><p class="eyebrow">待处理</p><span class="tag red">模型连接未测试</span><span class="tag">我司商品库未导入</span></div>
         </div>
       </div>
@@ -91,26 +90,27 @@ const steps = [
   },
   {
     id: "company",
-    flow: "B. 日常商品编码对照",
-    title: "导入我司商品库",
+    flow: "系统基础资料",
+    title: "更新我司商品库",
     nav: "我司库",
-    goals: ["建立目标商品库", "确认编码和名称字段", "识别描述、别名、分类等辅助字段"],
-    risks: ["我司库不是纯标准词条", "缺少编码或名称时不能继续", "重复列和空白列要提示"],
-    outputs: ["我司商品库记录", "我司字段含义确认结果"],
+    goals: ["建立目标商品库", "把我司库作为系统基础资料管理", "识别编码、名称、单位、描述等关键字段"],
+    risks: ["我司库不是纯标准词条", "缺少编码或名称时不能继续", "我司库更新后会影响下一轮对照"],
+    outputs: ["我司商品库记录", "我司字段含义确认结果", "我司库版本或更新时间"],
     render: () => `
       <div class="wireframe">
         <div class="panel">
           <div class="panel-title">
             <div><p class="eyebrow">Company Catalog</p><h3>更新我司商品库</h3></div>
-            <button class="primary-button" type="button">选择 Excel</button>
+            <button class="primary-button" type="button">选择我司商品库 Excel</button>
           </div>
+          <p class="muted">我司商品库是系统基础资料，不属于每次客户对照任务。客户人工加工后如果发现缺商品，应先补全我司库，再开始下一轮。</p>
           <table class="table-mock">
-            <thead><tr><th>系统识别</th><th>Excel 列名</th><th>样例</th><th>用户确认</th></tr></thead>
+            <thead><tr><th>系统识别</th><th>Excel 列名</th><th>样例</th><th>状态</th></tr></thead>
             <tbody>
               <tr><td>我司商品编码</td><td>SPUID</td><td>100294</td><td><span class="tag green">必需</span></td></tr>
               <tr><td>我司商品名称</td><td>SPU名称（可修改）</td><td>海天金标生抽500ml</td><td><span class="tag green">必需</span></td></tr>
-              <tr><td>我司单位</td><td>SPU基本单位</td><td>瓶</td><td><span class="tag blue">强建议</span></td></tr>
-              <tr><td>我司描述</td><td>SPU描述（可修改）</td><td>抄码/规格补充</td><td><span class="tag blue">强建议</span></td></tr>
+              <tr><td>我司单位</td><td>SPU基本单位</td><td>瓶</td><td><span class="tag blue">建议参与</span></td></tr>
+              <tr><td>我司描述</td><td>SPU描述（可修改）</td><td>抄码/规格补充</td><td><span class="tag blue">建议参与</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -118,184 +118,153 @@ const steps = [
           <p class="eyebrow">导入摘要</p>
           <span class="tag green">11522 条商品</span>
           <span class="tag">22 列</span>
-          <span class="tag red">2 个字段需确认</span>
+          <span class="tag green">基础字段已确认</span>
         </div>
       </div>
     `,
   },
   {
-    id: "customer",
+    id: "task",
     flow: "B. 日常商品编码对照",
-    title: "上传客户商品库 / 手工输入",
-    nav: "客户库",
-    goals: ["支持批量客户库", "支持单条手工查询", "提前暴露重复列、空白列和缺失字段"],
-    risks: ["客户库带加工痕迹", "商品名称可能重复列", "规格可能藏在名称里"],
-    outputs: ["客户记录", "客户字段含义确认结果"],
+    title: "新建对照任务",
+    nav: "新建任务",
+    goals: ["把客户库上传、字段确认、开始第一轮放在同一个任务页", "支持批量客户库和单条手工输入", "字段确认通过后才能开始第一轮对照"],
+    risks: ["客户库上传页不要求人工做复杂判断", "AI 可以预判字段但不能完全黑箱跳过确认", "我司商品库更新不属于每次任务流程"],
+    outputs: ["客户记录", "字段确认结果", "第一轮对照任务"],
     render: () => `
       <div class="wireframe">
+        <div class="panel tight">
+          <div class="task-steps" aria-label="新建任务步骤">
+            <span class="task-step active">1 导入客户数据</span>
+            <span class="task-step active">2 确认关键字段</span>
+            <span class="task-step">3 开始第一轮对照</span>
+          </div>
+        </div>
+
         <div class="split-2">
           <div class="panel">
-            <div class="panel-title"><div><p class="eyebrow">Batch</p><h3>上传客户商品库</h3></div><button class="primary-button" type="button">选择客户 Excel</button></div>
+            <div class="panel-title">
+              <div><p class="eyebrow">Step 1</p><h3>导入客户商品库</h3></div>
+              <button class="primary-button" type="button">选择客户 Excel</button>
+            </div>
+            <p class="muted">这里只展示系统读到的列名、样例和异常提醒，不要求业务人员在这里完成字段判断。</p>
             <table class="table-mock">
-              <thead><tr><th>列名</th><th>样例</th><th>提醒</th></tr></thead>
+              <thead><tr><th>客户库列名</th><th>样例</th><th>系统提醒</th></tr></thead>
               <tbody>
-                <tr><td>商品名称</td><td>海天金标生抽</td><td><span class="tag green">名称字段</span></td></tr>
+                <tr><td>商品名称</td><td>海天金标生抽</td><td><span class="tag green">可能是名称列</span></td></tr>
                 <tr><td>规格</td><td>[1*500g]</td><td><span class="tag">格式需归一</span></td></tr>
-                <tr><td>单位</td><td>瓶</td><td><span class="tag blue">强建议</span></td></tr>
+                <tr><td>单位</td><td>瓶</td><td><span class="tag blue">建议参与判断</span></td></tr>
                 <tr><td>商品名称</td><td>海天金标生抽</td><td><span class="tag red">重复列名</span></td></tr>
               </tbody>
             </table>
           </div>
           <div class="panel">
             <p class="eyebrow">Manual</p>
-            <h3>手工输入单条商品</h3>
+            <h3>或者手工输入单条商品</h3>
             <div class="form-grid" style="margin-top:16px">
               <label class="field"><span>商品名称</span><div class="input-mock">海天金标生抽</div></label>
               <label class="field"><span>规格</span><div class="input-mock">500ml</div></label>
               <label class="field"><span>单位</span><div class="input-mock">瓶</div></label>
               <label class="field"><span>备注</span><div class="input-mock">无</div></label>
             </div>
-            <div class="flow-row" style="margin-top:18px"><button class="primary-button" type="button">加入对照任务</button></div>
+            <div class="flow-row" style="margin-top:18px"><button class="primary-button" type="button">加入本次任务</button></div>
           </div>
         </div>
-      </div>
-    `,
-  },
-  {
-    id: "fields",
-    flow: "B. 日常商品编码对照",
-    title: "字段含义确认",
-    nav: "字段确认",
-    goals: ["把字段分成必需、强建议、可选、不参与", "缺失字段给业务风险提示", "让用户修正系统误判"],
-    risks: ["不能机械套固定字段", "缺少必需字段要阻止继续", "强建议字段缺失要降低自动落码等级"],
-    outputs: ["字段确认结果", "字段风险提示", "可复用模板"],
-    render: () => `
-      <div class="wireframe">
+
         <div class="panel">
-          <div class="panel-title"><div><p class="eyebrow">Field Mapping</p><h3>请确认字段含义</h3></div><span class="tag red">规格字段格式混杂</span></div>
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">Step 2</p>
+              <h3>确认关键字段</h3>
+            </div>
+            <span class="tag red">规格字段格式混杂</span>
+          </div>
           <table class="table-mock">
-            <thead><tr><th>业务含义</th><th>我司库列</th><th>客户库列</th><th>等级</th><th>提示</th></tr></thead>
+            <thead><tr><th>业务含义</th><th>系统预判客户库列</th><th>是否需要你确认</th><th>提示</th></tr></thead>
             <tbody>
-              <tr><td>商品编码</td><td>SPUID</td><td>编号</td><td><span class="tag green">必需</span></td><td>用于回写和追溯</td></tr>
-              <tr><td>商品名称</td><td>SPU名称</td><td>商品名称</td><td><span class="tag green">必需</span></td><td>主判断入口</td></tr>
-              <tr><td>规格</td><td>SPU描述</td><td>规格</td><td><span class="tag blue">强建议</span></td><td>缺失会影响自动落码</td></tr>
-              <tr><td>备注</td><td>描述</td><td>空白列</td><td><span class="tag">可选</span></td><td>发现空白列，默认不参与</td></tr>
+              <tr><td>商品名称</td><td>商品名称</td><td><span class="tag green">必须确认</span></td><td>主判断入口</td></tr>
+              <tr><td>规格</td><td>规格</td><td><span class="tag blue">建议确认</span></td><td>可能影响包装和容量判断</td></tr>
+              <tr><td>单位</td><td>单位</td><td><span class="tag blue">建议确认</span></td><td>可能影响结算单位</td></tr>
+              <tr><td>备注</td><td>空白列</td><td><span class="tag">可跳过</span></td><td>发现空白列，默认不参与</td></tr>
             </tbody>
           </table>
         </div>
-        <div class="panel tight">
+
+        <div class="panel">
           <div class="panel-title">
             <div>
-              <p class="eyebrow">继续条件</p>
-              <h3>字段确认完成后，才允许开始第一轮对照</h3>
+              <p class="eyebrow">Step 3</p>
+              <h3>开始第一轮对照</h3>
             </div>
             <button class="primary-button" type="button">开始第一轮对照</button>
           </div>
+          <p class="muted">点击后进入对照进度看板。系统开始读取客户记录、召回我司候选，并准备写入导出 Excel 的解释和风险提示。</p>
           <span class="tag green">必需字段已确认</span>
-          <span class="tag red">强建议字段有风险</span>
-          <p class="muted">这个按钮是业务流程的真正启动点。点击后系统才开始读取客户记录、召回我司候选、生成中文解释和风险提示。</p>
+          <span class="tag red">规格字段有风险</span>
+          <span class="tag green">模型可用</span>
         </div>
       </div>
     `,
   },
   {
-    id: "run",
+    id: "board",
     flow: "B. 日常商品编码对照",
-    title: "开始第一轮对照",
-    nav: "开始对照",
-    goals: ["让用户明确知道系统什么时候开始计算", "运行前再次确认输入文件和字段状态", "运行完成后进入结果查看和人工审核"],
-    risks: ["字段未确认不能开始", "模型不可用不能悄悄生成智能结果", "第一轮结果只是系统建议，不等于人工确认"],
-    outputs: ["第一轮对照任务", "运行进度", "第一轮结果摘要"],
+    title: "对照进度看板",
+    nav: "运行看板",
+    goals: ["让用户明确知道系统什么时候开始计算", "展示本轮运行进度和结果分布", "本轮完成后允许导出 Excel"],
+    risks: ["运行中不能导出正式结果", "停止后本轮不算完成", "统计框第一版只展示数量，不进入页面明细"],
+    outputs: ["第 1 轮运行状态", "结果分类统计", "可导出的 Excel"],
     render: () => `
       <div class="wireframe">
         <div class="panel">
           <div class="panel-title">
             <div>
-              <p class="eyebrow">Run</p>
-              <h3>准备开始第一轮智能对照</h3>
+              <p class="eyebrow">Run Board</p>
+              <h3>客户食堂库：第 1 轮对照</h3>
             </div>
-            <button class="primary-button" type="button">开始第一轮对照</button>
+            <span class="tag blue">运行中</span>
           </div>
-          <div class="status-grid">
-            <div class="status-tile"><span class="tag green">我司库</span><strong>11522 条</strong><p class="muted">编码、名称字段已确认</p></div>
-            <div class="status-tile"><span class="tag green">客户库</span><strong>2581 条</strong><p class="muted">商品名称字段已确认</p></div>
-            <div class="status-tile"><span class="tag red">字段风险</span><strong>规格格式混杂</strong><p class="muted">允许继续，但会影响自动落码等级</p></div>
-            <div class="status-tile"><span class="tag green">模型</span><strong>可用</strong><p class="muted">用于中文解释和风险判断</p></div>
+          <div class="flow-row">
+            <span class="tag">任务：客户商品库_20260425</span>
+            <span class="tag">当前轮次：第 1 轮</span>
+            <span class="tag">我司库版本：2026-04-25 09:30</span>
           </div>
         </div>
+
+        <div class="status-grid">
+          <div class="status-tile"><span class="tag green">我司商品库</span><strong>11522 条</strong><p class="muted">目标库总数</p></div>
+          <div class="status-tile"><span class="tag green">客户商品库</span><strong>2581 条</strong><p class="muted">本轮待处理总数</p></div>
+          <div class="status-tile"><span class="tag blue">已完成</span><strong>1600 条</strong><p class="muted">当前已处理记录</p></div>
+          <div class="status-tile"><span class="tag green">自动落码无风险</span><strong>986 条</strong><p class="muted">可直接写入导出表</p></div>
+          <div class="status-tile"><span class="tag blue">建议落码需复核</span><strong>532 条</strong><p class="muted">Excel 中标记待人工看</p></div>
+          <div class="status-tile"><span class="tag red">必须人工干预</span><strong>82 条</strong><p class="muted">不伪造确定编码</p></div>
+          <div class="status-tile"><span class="tag">未找到可靠匹配</span><strong>0 条</strong><p class="muted">继续等待本轮完成</p></div>
+          <div class="status-tile"><span class="tag">本轮状态</span><strong>运行中</strong><p class="muted">本轮完成后才能导出</p></div>
+        </div>
+
         <div class="panel">
-          <p class="eyebrow">第一轮运行后看到什么</p>
-          <table class="table-mock">
-            <thead><tr><th>阶段</th><th>系统动作</th><th>用户下一步</th></tr></thead>
-            <tbody>
-              <tr><td>候选召回</td><td>从我司库找 Top 3 到 Top 5 候选</td><td>等待系统完成</td></tr>
-              <tr><td>证据对齐</td><td>说明品牌、品名、规格、单位、备注是否对上</td><td>查看中文解释</td></tr>
-              <tr><td>状态判定</td><td>给出自动落码、待确认、必须人工审核等状态</td><td>进入人工审核队列</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="panel tight">
-          <p class="eyebrow">运行中示意</p>
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">Controls</p>
+              <h3>任务控制</h3>
+            </div>
+            <div class="flow-row">
+              <button class="ghost-button" type="button">暂停</button>
+              <button class="ghost-button" type="button">继续</button>
+              <button class="ghost-button danger-button" type="button">停止</button>
+            </div>
+          </div>
           <div class="progress-track"><span style="width:62%"></span></div>
-          <p class="muted">正在处理：第 1600 / 2581 条。已生成候选 1518 条，必须人工审核 82 条。</p>
-        </div>
-      </div>
-    `,
-  },
-  {
-    id: "match",
-    flow: "B. 日常商品编码对照",
-    title: "第一轮结果和证据对齐",
-    nav: "候选解释",
-    goals: ["生成我司候选", "解释候选来源", "把证据对齐说成人话"],
-    risks: ["候选层不能最终拍板", "候选为空要说明原因", "必须暴露冲突和没对上的信息"],
-    outputs: ["候选列表", "证据对齐摘要", "五档状态草稿"],
-    render: () => `
-      <div class="review-layout">
-        <div class="panel">
-          <p class="eyebrow">客户原始记录</p>
-          <h3>海天金标生抽</h3>
-          <p class="muted">规格：500ml　单位：瓶　类别：调味品</p>
-          <div class="textarea-mock">系统理解：海天是品牌，金标更像系列或等级标识，生抽是核心品名，500ml 和瓶是强约束。</div>
-        </div>
-        <div class="panel">
-          <div class="panel-title"><div><p class="eyebrow">Candidates</p><h3>候选和证据</h3></div><span class="tag blue">建议落码待确认</span></div>
-          <div class="candidate-list">
-            <div class="candidate selected"><h4>海天金标生抽500ml</h4><p><span class="tag green">品牌对上</span><span class="tag green">品名对上</span><span class="tag green">规格对上</span><br>推荐理由：候选完整覆盖客户记录关键语义。</p></div>
-            <div class="candidate"><h4>海天生抽 1*12*500ml</h4><p><span class="tag green">品牌对上</span><span class="tag red">包装层级不同</span><br>风险：可能是整箱，不应自动落码。</p></div>
-            <div class="candidate"><h4>海天老抽500ml</h4><p><span class="tag red">核心品名冲突</span><br>风险：生抽不能翻成老抽。</p></div>
+          <p class="muted">正在处理：第 1600 / 2581 条。已生成候选 1518 条，必须人工干预 82 条。</p>
+          <div class="flow-row" style="margin-top:18px">
+            <button class="primary-button" type="button" disabled>导出 Excel</button>
+            <span class="tag">本轮完成后才能导出</span>
           </div>
         </div>
-      </div>
-    `,
-  },
-  {
-    id: "review",
-    flow: "B. 日常商品编码对照",
-    title: "人工审核",
-    nav: "人工审核",
-    goals: ["让人工从找答案变成确认证据", "支持确认、改选、无匹配", "记录审核备注和错误类型"],
-    risks: ["建议落码不能伪装成已确认", "人工改选要留痕", "记忆第一版只记录不控制自动落码"],
-    outputs: ["人工确认结果", "审核备注", "记忆记录草稿"],
-    render: () => `
-      <div class="wireframe">
-        <div class="panel">
-          <div class="panel-title"><div><p class="eyebrow">Review Queue</p><h3>待确认 42 条</h3></div><span class="tag red">8 条必须人工审核</span></div>
-          <table class="table-mock">
-            <thead><tr><th>客户商品</th><th>推荐我司商品</th><th>状态</th><th>操作</th></tr></thead>
-            <tbody>
-              <tr><td>海天金标生抽 500ml</td><td>海天金标生抽500ml</td><td><span class="tag blue">建议落码待确认</span></td><td><button class="mini-button" type="button">确认</button> <button class="mini-button" type="button">改选</button></td></tr>
-              <tr><td>可口可乐 1*24*330ml 件</td><td>可口可乐330ml</td><td><span class="tag red">必须人工审核</span></td><td><button class="mini-button" type="button">查看风险</button></td></tr>
-              <tr><td>瘦肉 备注：切丝</td><td>瘦肉片</td><td><span class="tag red">必须人工审核</span></td><td><button class="mini-button" type="button">标记理解错误</button></td></tr>
-            </tbody>
-          </table>
-        </div>
+
         <div class="panel tight">
-          <p class="eyebrow">审核动作</p>
-          <span class="tag green">确认推荐</span>
-          <span class="tag">改选候选</span>
-          <span class="tag">标记无匹配</span>
-          <span class="tag red">标记遗漏</span>
+          <p class="eyebrow">说明</p>
+          <p class="muted">3.1 的统计框只展示数量，不进入页面明细。所有明细、候选解释、风险提示和人工审核列，都先进入导出的 Excel。</p>
         </div>
       </div>
     `,
@@ -303,27 +272,52 @@ const steps = [
   {
     id: "export",
     flow: "B. 日常商品编码对照",
-    title: "导出编码对照表",
+    title: "导出 Excel",
     nav: "导出",
-    goals: ["保留客户原始表格", "在客户原始列后追加结果列", "导出业务人员能看懂的中文表"],
-    risks: ["不能导出成只有结果字段的新表", "必须人工审核不能伪造编码", "文件被占用要可恢复"],
-    outputs: ["编码对照结果 Excel", "导出记录", "操作日志"],
+    goals: ["本轮完成后导出可人工处理的 Excel", "避免一张超宽表拖垮使用体验", "支持人工加工后进入第二轮"],
+    risks: ["不能覆盖客户原始文件", "必须人工干预不能伪造编码", "第二轮回导必须依赖任务行ID"],
+    outputs: ["多工作表 Excel", "人工加工入口", "下一轮输入文件"],
     render: () => `
       <div class="wireframe">
         <div class="panel">
-          <div class="panel-title"><div><p class="eyebrow">Export</p><h3>导出前确认</h3></div><button class="primary-button" type="button">导出 Excel</button></div>
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">Export</p>
+              <h3>第 1 轮已完成，可以导出 Excel</h3>
+            </div>
+            <button class="primary-button" type="button">导出 Excel</button>
+          </div>
+          <div class="status-grid">
+            <div class="status-tile"><span class="tag green">自动落码无风险</span><strong>1602 条</strong><p class="muted">总表中直接写入编码</p></div>
+            <div class="status-tile"><span class="tag blue">建议落码需复核</span><strong>706 条</strong><p class="muted">人工在 Excel 中确认</p></div>
+            <div class="status-tile"><span class="tag red">必须人工干预</span><strong>231 条</strong><p class="muted">不回填确定编码</p></div>
+            <div class="status-tile"><span class="tag">未找到可靠匹配</span><strong>42 条</strong><p class="muted">等待人工或补全我司库</p></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <p class="eyebrow">Excel 工作表结构</p>
           <table class="table-mock">
-            <thead><tr><th>客户原始列：编号</th><th>客户原始列：商品名称</th><th>客户原始列：规格</th><th>客户原始列：单位</th><th>追加列：对照状态</th><th>追加列：我司编码</th><th>追加列：推荐理由</th><th>追加列：人工备注</th></tr></thead>
+            <thead><tr><th>工作表</th><th>用途</th><th>关键设计</th></tr></thead>
             <tbody>
-              <tr><td>KH-001</td><td>海天金标生抽</td><td>500ml</td><td>瓶</td><td><span class="tag green">自动落码</span></td><td>SPU100294</td><td>品牌、品名、规格、单位均覆盖</td><td></td></tr>
-              <tr><td>KH-002</td><td>可口可乐</td><td>1*24*330ml</td><td>件</td><td><span class="tag red">必须人工审核</span></td><td>不回填</td><td>包装层级可能影响结算</td><td>待采购确认</td></tr>
-              <tr><td>KH-003</td><td>未知商品 A</td><td></td><td>包</td><td><span class="tag">未找到可靠匹配</span></td><td>不回填</td><td>候选均存在核心冲突</td><td></td></tr>
+              <tr><td>对照结果总表</td><td>业务人员主处理表</td><td>保留客户原始列，追加少量关键结果列</td></tr>
+              <tr><td>详细证据表</td><td>查看解释和风险</td><td>总表“查看详细证据”可跳转到对应行</td></tr>
+              <tr><td>统计汇总表</td><td>查看本轮整体结果</td><td>展示轮次、模型、我司库版本和分类数量</td></tr>
             </tbody>
           </table>
         </div>
-        <div class="split-2">
-          <div class="panel tight"><p class="eyebrow">导出文件</p><h3>客户商品库_编码对照结果.xlsx</h3><p class="muted">保留客户原始列，在后面追加结果列，不覆盖原始文件。</p></div>
-          <div class="panel tight"><p class="eyebrow">结果统计</p><span class="tag green">自动 128</span><span class="tag blue">待确认 42</span><span class="tag red">人工 8</span><span class="tag">未匹配 3</span></div>
+
+        <div class="panel">
+          <p class="eyebrow">第二轮闭环</p>
+          <div class="flow-row">
+            <span class="flow-chip">导出 Excel</span>
+            <span class="flow-chip">人工加工</span>
+            <span class="flow-chip">补全我司库</span>
+            <span class="flow-chip">更新我司商品库</span>
+            <span class="flow-chip">继续历史任务 / 开始下一轮</span>
+            <span class="flow-chip">开始第 2 轮</span>
+          </div>
+          <p class="muted">人工加工后的 Excel 需要保留系统任务行ID。第二轮导入后，人工已确认的结果不被系统随意覆盖，人工指定编码会和最新我司库校验。</p>
         </div>
       </div>
     `,

@@ -268,17 +268,28 @@ h3 {
   color: var(--ink);
 }
 
+.ghost-button.danger-button {
+  color: var(--red);
+}
+
 .mini-button {
   padding: 9px 13px;
   background: var(--surface);
   color: var(--accent-dark);
 }
 
-.primary-button:hover,
-.ghost-button:hover,
-.mini-button:hover {
+.primary-button:hover:not(:disabled),
+.ghost-button:hover:not(:disabled),
+.mini-button:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+
+.primary-button:disabled,
+.ghost-button:disabled,
+.mini-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
 }
 
 .screen-card {
@@ -359,6 +370,28 @@ h3 {
   border-radius: 14px;
   background: var(--surface-muted);
   font-weight: 800;
+}
+
+.task-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.task-step {
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-weight: 900;
+  text-align: center;
+}
+
+.task-step.active {
+  border-color: var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
 }
 
 .progress-track {
@@ -551,6 +584,7 @@ h3 {
   .topbar,
   .stage-header,
   .hero-panel,
+  .task-steps,
   .review-layout,
   .split-2,
   .form-grid,
