@@ -41,6 +41,7 @@ const steps = [
             <span class="flow-chip">我司库</span>
             <span class="flow-chip">客户库</span>
             <span class="flow-chip">字段确认</span>
+            <span class="flow-chip">开始第一轮</span>
             <span class="flow-chip">候选解释</span>
             <span class="flow-chip">人工确认</span>
             <span class="flow-chip">导出</span>
@@ -182,14 +183,69 @@ const steps = [
             </tbody>
           </table>
         </div>
-        <div class="panel tight"><p class="eyebrow">继续条件</p><span class="tag green">必需字段已确认</span><span class="tag red">强建议字段有风险</span></div>
+        <div class="panel tight">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">继续条件</p>
+              <h3>字段确认完成后，才允许开始第一轮对照</h3>
+            </div>
+            <button class="primary-button" type="button">开始第一轮对照</button>
+          </div>
+          <span class="tag green">必需字段已确认</span>
+          <span class="tag red">强建议字段有风险</span>
+          <p class="muted">这个按钮是业务流程的真正启动点。点击后系统才开始读取客户记录、召回我司候选、生成中文解释和风险提示。</p>
+        </div>
+      </div>
+    `,
+  },
+  {
+    id: "run",
+    flow: "B. 日常商品编码对照",
+    title: "开始第一轮对照",
+    nav: "开始对照",
+    goals: ["让用户明确知道系统什么时候开始计算", "运行前再次确认输入文件和字段状态", "运行完成后进入结果查看和人工审核"],
+    risks: ["字段未确认不能开始", "模型不可用不能悄悄生成智能结果", "第一轮结果只是系统建议，不等于人工确认"],
+    outputs: ["第一轮对照任务", "运行进度", "第一轮结果摘要"],
+    render: () => `
+      <div class="wireframe">
+        <div class="panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">Run</p>
+              <h3>准备开始第一轮智能对照</h3>
+            </div>
+            <button class="primary-button" type="button">开始第一轮对照</button>
+          </div>
+          <div class="status-grid">
+            <div class="status-tile"><span class="tag green">我司库</span><strong>11522 条</strong><p class="muted">编码、名称字段已确认</p></div>
+            <div class="status-tile"><span class="tag green">客户库</span><strong>2581 条</strong><p class="muted">商品名称字段已确认</p></div>
+            <div class="status-tile"><span class="tag red">字段风险</span><strong>规格格式混杂</strong><p class="muted">允许继续，但会影响自动落码等级</p></div>
+            <div class="status-tile"><span class="tag green">模型</span><strong>可用</strong><p class="muted">用于中文解释和风险判断</p></div>
+          </div>
+        </div>
+        <div class="panel">
+          <p class="eyebrow">第一轮运行后看到什么</p>
+          <table class="table-mock">
+            <thead><tr><th>阶段</th><th>系统动作</th><th>用户下一步</th></tr></thead>
+            <tbody>
+              <tr><td>候选召回</td><td>从我司库找 Top 3 到 Top 5 候选</td><td>等待系统完成</td></tr>
+              <tr><td>证据对齐</td><td>说明品牌、品名、规格、单位、备注是否对上</td><td>查看中文解释</td></tr>
+              <tr><td>状态判定</td><td>给出自动落码、待确认、必须人工审核等状态</td><td>进入人工审核队列</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="panel tight">
+          <p class="eyebrow">运行中示意</p>
+          <div class="progress-track"><span style="width:62%"></span></div>
+          <p class="muted">正在处理：第 1600 / 2581 条。已生成候选 1518 条，必须人工审核 82 条。</p>
+        </div>
       </div>
     `,
   },
   {
     id: "match",
     flow: "B. 日常商品编码对照",
-    title: "候选生成和证据对齐",
+    title: "第一轮结果和证据对齐",
     nav: "候选解释",
     goals: ["生成我司候选", "解释候选来源", "把证据对齐说成人话"],
     risks: ["候选层不能最终拍板", "候选为空要说明原因", "必须暴露冲突和没对上的信息"],
