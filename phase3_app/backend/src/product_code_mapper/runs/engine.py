@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from product_code_mapper.candidates.executor import CandidateExecutor
 from product_code_mapper.domain.models import CompanyProduct, CustomerItem, MatchResult
@@ -17,6 +17,7 @@ class MatchRunResult:
     metrics: RunMetrics
     audit_entries: list[AuditEntry]
     row_results: list[MatchResult]
+    customer_items: list[CustomerItem] = field(default_factory=list)
 
 
 class MatchRunEngine:
@@ -100,6 +101,7 @@ class MatchRunEngine:
             metrics=metrics,
             audit_entries=audit.entries,
             row_results=row_results,
+            customer_items=customer_items,
         )
 
 
@@ -109,4 +111,3 @@ def _sample_terms(customer_items: list[CustomerItem]) -> list[str]:
     if not customer_items:
         return ["未分类商品"]
     return [str(customer_items[0].fields.get("商品名称", "未分类商品")).strip() or "未分类商品"]
-
