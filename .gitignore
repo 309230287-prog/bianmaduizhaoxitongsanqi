@@ -13,6 +13,10 @@ runtime_data/
 build/
 dist/
 *.egg-info/
+node_modules/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
 
 desktop-shell/node_modules/
 desktop-shell/dist/
