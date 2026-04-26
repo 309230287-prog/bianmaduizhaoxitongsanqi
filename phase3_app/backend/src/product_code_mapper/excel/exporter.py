@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 from openpyxl import Workbook
 
@@ -27,7 +27,7 @@ APPENDED_RESULT_HEADERS = [
 ]
 
 
-def export_run_result(result: MatchRunResult, output_path: str | Path) -> None:
+def export_run_result(result: MatchRunResult, output_path: str | Path | BinaryIO) -> None:
     workbook = Workbook()
     summary_sheet = workbook.active
     summary_sheet.title = "对照结果总表"
@@ -38,7 +38,10 @@ def export_run_result(result: MatchRunResult, output_path: str | Path) -> None:
     _write_evidence_sheet(evidence_sheet, result)
     _write_metrics_sheet(metrics_sheet, result)
 
-    workbook.save(Path(output_path))
+    if isinstance(output_path, str | Path):
+        workbook.save(Path(output_path))
+        return
+    workbook.save(output_path)
 
 
 def _write_summary_sheet(sheet, result: MatchRunResult) -> None:
@@ -112,4 +115,3 @@ def _needs_review(status: MatchStatus) -> str:
     if status in {MatchStatus.AUTO_CODE, MatchStatus.AUTO_CODE_WITH_DIFFERENCE}:
         return "否"
     return "是"
-
