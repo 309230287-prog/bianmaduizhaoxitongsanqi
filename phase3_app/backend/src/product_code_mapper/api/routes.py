@@ -3,6 +3,7 @@ from io import BytesIO
 from fastapi import APIRouter, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 
+from product_code_mapper.api.settings_store import SettingsStore
 from product_code_mapper.api.task_store import InMemoryTaskStore, task_status_payload
 from product_code_mapper.excel.importer import import_company_products, import_customer_items
 
@@ -13,6 +14,26 @@ router = APIRouter()
 @router.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@router.get("/settings/model")
+def get_model_settings(request: Request) -> dict[str, str | bool]:
+    return _settings(request).model_settings.public_payload()
+
+
+@router.put("/settings/model")
+async def update_model_settings(request: Request) -> dict[str, str | bool]:
+    payload = await request.json()
+    settings = _settings(request).update_model_settings(payload)
+    return settings.public_payload()
+
+
+@router.post("/settings/model/test")
+def test_model_settings(request: Request) -> dict[str, str | bool]:
+    settings = _settings(request).model_settings
+    if not settings.has_api_key:
+        return {"ok": False, "message": "未配置 API Key，暂时不能连接模型。"}
+    return {"ok": True, "message": "模型配置已保存，连接测试将在接入真实模型后启用。"}
 
 
 @router.post("/catalog/company/import")
@@ -68,3 +89,7 @@ def export_task(request: Request, task_id: str) -> Response:
 
 def _store(request: Request) -> InMemoryTaskStore:
     return request.app.state.task_store
+
+
+def _settings(request: Request) -> SettingsStore:
+    return request.app.state.settings_store
