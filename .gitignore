@@ -13,12 +13,15 @@ runtime_data/
 build/
 dist/
 *.egg-info/
+node_modules/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
 
-desktop-shell/node_modules/
-desktop-shell/dist/
-desktop-shell/build/
+target/
+phase3_app/desktop/src-tauri/target/
 
-# Real source workbooks are local business data. Keep validation samples under samples/phase2 tracked.
+# Real source workbooks are local business data. Keep validation samples separate.
 客户商品库.xlsx
 我司商品库.xlsx
 

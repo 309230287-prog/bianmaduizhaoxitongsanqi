@@ -1,0 +1,28 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/HEAD/core/tauri-config-schema/schema.json",
+  "productName": "商品编码对照系统",
+  "version": "0.1.0",
+  "identifier": "com.bianmaduizhao.productcodemapper",
+  "build": {
+    "frontendDist": "../../frontend/dist",
+    "devUrl": "http://127.0.0.1:5173",
+    "beforeBuildCommand": "npm run build --prefix ../frontend"
+  },
+  "bundle": {
+    "icon": ["icons/icon.ico"]
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "商品编码对照系统",
+        "width": 1280,
+        "height": 860,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}

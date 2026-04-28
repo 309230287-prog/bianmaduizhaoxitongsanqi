@@ -1,0 +1,23 @@
+[project]
+name = "product-code-mapper"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "uvicorn",
+  "openpyxl",
+  "pydantic",
+  "httpx",
+  "python-multipart",
+  "rapidfuzz",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "pytest-cov",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
