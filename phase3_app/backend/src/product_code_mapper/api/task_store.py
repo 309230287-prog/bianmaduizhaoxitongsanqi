@@ -151,6 +151,8 @@ class InMemoryTaskStore:
 
     def start_task(self, task_id: str) -> TaskRecord:
         task = self.get_task(task_id)
+        if task.status in ("completed", "stopped", "failed"):
+            return task
         self._ensure_ready_to_start(task)
         existing = self._state_machines.get(task_id)
         if existing and not existing.is_terminal:
@@ -309,6 +311,26 @@ class InMemoryTaskStore:
         elif task.partial_metrics:
             payload["metrics"] = asdict(task.partial_metrics)
         return payload
+
+    def list_task_summaries(self) -> list[dict]:
+        summaries: dict[str, dict] = {}
+        if self._repo:
+            for row in self._repo.list_tasks():
+                task_id = row["task_id"]
+                summaries[task_id] = {
+                    "task_id": task_id,
+                    "task_status": row["status"],
+                    "can_export": row["status"] == "completed" and bool(row["has_completed_results"]),
+                    "customer_count": row["customer_count"],
+                }
+        for task_id, task in self.tasks.items():
+            summaries[task_id] = {
+                "task_id": task_id,
+                "task_status": task.status,
+                "can_export": task.status == "completed" and task.result is not None,
+                "customer_count": len(task.customer_items),
+            }
+        return list(summaries.values())
 
     def _progress_callback(self, task_id: str, run_id: str):
         def callback(row_results: dict[str, MatchResult], round_no: int, total_count: int) -> None:

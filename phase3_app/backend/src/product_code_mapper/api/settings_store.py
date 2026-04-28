@@ -51,11 +51,13 @@ class SettingsStore:
         )
 
     def update_model_settings(self, payload: dict) -> ModelSettings:
+        incoming_api_key = str(payload.get("api_key", ""))
+        api_key = incoming_api_key if incoming_api_key.strip() else self.model_settings.api_key
         self.model_settings = ModelSettings(
             provider=str(payload.get("provider", self.model_settings.provider)),
             model_name=str(payload.get("model_name", self.model_settings.model_name)),
             base_url=str(payload.get("base_url", self.model_settings.base_url)),
-            api_key=str(payload.get("api_key", self.model_settings.api_key)),
+            api_key=api_key,
             data_dir=str(payload.get("data_dir", self.model_settings.data_dir)),
             export_dir=str(payload.get("export_dir", self.model_settings.export_dir)),
         )

@@ -173,3 +173,45 @@
 - 新增回归测试先失败后通过。
 - 后端全量测试：`94 passed in 4.17s`。
 - 重启后端后，通过真实 Tauri WebView2 验证：连续两次 `POST /tasks` 有效 Excel 上传均返回 200；坏文件上传返回 400 中文错误，不再是 `Failed to fetch`。
+
+## 2026-04-28 三期隐藏 BUG 审计
+
+用户要求继续深挖三期是否还有同类 BUG。
+
+审计范围：
+
+- 后端全量测试。
+- 前端生产构建。
+- Tauri 桌面构建。
+- 静态扫描 `TODO/FIXME/Failed to fetch/未实现/占位` 等高风险文本。
+- 人工复核任务创建、字段确认、运行看板、导出页、历史任务和配置保存链路。
+
+新增确认 BUG：
+
+- 已完成任务再次进入运行看板时，前端会自动调用 `/tasks/{task_id}/start`，后端原逻辑会把已完成任务重新置为 `running`，存在“只是查看却误重跑”的风险。
+- 应用重启后，已完成任务可以按 ID 导出，但 `/config/status` 只返回内存任务，导致运行看板/导出页看不到历史已完成任务。
+- 初始化配置页不回显 API Key 是正确的，但保存时会提交空字符串，后端原逻辑会把已保存的 API Key 清空。
+
+修复：
+
+- `start_task` 对 `completed/stopped/failed` 终态任务改为直接返回当前状态，不再误重跑。
+- `TaskRepo.list_tasks` 从 SQLite 汇总历史任务、客户行数和是否有已完成结果。
+- `/config/status` 改为合并 SQLite 历史任务和当前内存任务，重启后仍可列出可导出任务。
+- 模型配置保存时，空 `api_key` 表示“不修改原 Key”，只有非空 Key 才替换。
+
+新增回归测试：
+
+- `test_completed_task_is_not_restarted_when_start_called_again`
+- `test_config_status_lists_completed_tasks_after_app_restart`
+- `test_blank_api_key_update_preserves_existing_secret`
+
+验证：
+
+- 后端全量测试：`97 passed in 4.45s`。
+- 前端构建：`npm run build` 通过。
+- Tauri 桌面构建：`npm run build` 通过，产物仍为 `phase3_app/desktop/src-tauri/target/release/product-code-mapper.exe`。
+
+仍需后续产品化补强：
+
+- `/logs/recent` 目前仍是占位返回空数组，暂未接入真实操作日志查询；当前界面未依赖它，不阻塞主流程。
+- 配置页的默认数据目录/导出目录已经保存，但当前后端运行目录仍由启动参数决定，后续应统一成真正可配置的运行目录。

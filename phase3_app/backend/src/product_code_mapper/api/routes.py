@@ -38,15 +38,7 @@ def config_status(request: Request) -> dict:
         "has_company_catalog": len(store.company_products) > 0,
         "company_product_count": len(store.company_products),
         "active_tasks": len(store.tasks),
-        "tasks": [
-            {
-                "task_id": tid,
-                "task_status": t.status,
-                "can_export": t.status == "completed" and t.result is not None,
-                "customer_count": len(t.customer_items),
-            }
-            for tid, t in store.tasks.items()
-        ],
+        "tasks": store.list_task_summaries(),
     }
 
 

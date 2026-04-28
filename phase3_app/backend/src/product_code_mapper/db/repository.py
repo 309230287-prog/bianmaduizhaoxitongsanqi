@@ -68,6 +68,28 @@ class TaskRepo:
         ).fetchone()
         return dict(row) if row else None
 
+    def list_tasks(self, limit: int = 50) -> list[dict]:
+        rows = self._conn.execute(
+            """
+            SELECT
+                t.*,
+                COUNT(r.task_row_id) AS customer_count,
+                EXISTS (
+                    SELECT 1
+                    FROM task_runs tr
+                    JOIN run_results rr ON rr.run_id = tr.run_id
+                    WHERE tr.task_id = t.task_id AND tr.status = 'completed'
+                ) AS has_completed_results
+            FROM match_tasks t
+            LEFT JOIN task_rows r ON r.task_id = t.task_id
+            GROUP BY t.task_id
+            ORDER BY t.created_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     # ---- Task Rows ----
 
     def insert_task_rows(self, rows: list[dict]) -> None:

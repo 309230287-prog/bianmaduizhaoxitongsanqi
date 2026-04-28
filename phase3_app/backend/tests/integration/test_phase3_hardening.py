@@ -143,6 +143,39 @@ def test_completed_task_can_export_after_app_restart(tmp_path: Path):
     assert "对照结果总表" in workbook.sheetnames
 
 
+def test_completed_task_is_not_restarted_when_start_called_again(tmp_path: Path):
+    client = _client_with_fake_model(tmp_path)
+    _import_company_catalog(client)
+    task_id = _create_customer_task(client)
+    _confirm_suggested_fields(client, task_id)
+    client.post(f"/tasks/{task_id}/start")
+    _wait_for_task_status(client, task_id, "completed")
+
+    second_start = client.post(f"/tasks/{task_id}/start")
+
+    assert second_start.status_code == 200
+    assert second_start.json()["task_status"] == "completed"
+    assert second_start.json()["run_status"] == "completed"
+    assert second_start.json()["can_export"] is True
+
+
+def test_config_status_lists_completed_tasks_after_app_restart(tmp_path: Path):
+    data_dir = tmp_path / "data"
+    client = _client_with_fake_model(tmp_path, data_dir=data_dir)
+    _import_company_catalog(client)
+    task_id = _create_customer_task(client)
+    _confirm_suggested_fields(client, task_id)
+    client.post(f"/tasks/{task_id}/start")
+    _wait_for_task_status(client, task_id, "completed")
+
+    restarted = _client_with_fake_model(tmp_path, data_dir=data_dir)
+    status = restarted.get("/config/status")
+
+    assert status.status_code == 200
+    tasks = status.json()["tasks"]
+    assert any(task["task_id"] == task_id and task["can_export"] for task in tasks)
+
+
 def _client_with_fake_model(tmp_path: Path, data_dir: Path | None = None) -> TestClient:
     client = TestClient(create_app(data_dir=data_dir or tmp_path / "data"))
     client.app.state.task_store._model_client_factory = lambda: FakeModelClient()
