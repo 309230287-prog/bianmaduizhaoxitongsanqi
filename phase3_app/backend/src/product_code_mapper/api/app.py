@@ -24,6 +24,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
             "http://tauri.localhost",
             "https://tauri.localhost",
             "tauri://localhost",
+            "null",
         ],
         allow_credentials=True,
         allow_methods=["*"],

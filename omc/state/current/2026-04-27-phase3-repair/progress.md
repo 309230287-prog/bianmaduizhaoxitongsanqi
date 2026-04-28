@@ -108,3 +108,28 @@
 
 - Tauri 来源预检请求返回 200，`Access-Control-Allow-Origin` 为 `http://tauri.localhost`。
 - 后端全量测试：`88 passed in 3.63s`
+
+## 2026-04-28 全局 Failed to fetch 继续修复
+
+用户在“新建对照任务”页面继续看到 `Failed to fetch`。
+
+进一步证据：
+
+- 后端实际已经创建了多个任务，说明请求已经到达后端。
+- 前端仍提示 `Failed to fetch`，说明失败发生在浏览器拿响应阶段。
+- 对 `Origin: null` 的 CORS 预检请求返回 400。
+
+根因：
+
+- Tauri 打包桌面窗口在部分场景下会使用 `Origin: null`。
+- 后端未允许 `null` 来源，导致响应被 WebView 拦截。
+
+修复：
+
+- CORS 允许来源增加 `null`。
+- 新增集成测试 `test_cors_allows_packaged_desktop_null_origin`。
+
+验证：
+
+- `Origin: null` 访问 `/tasks` 预检返回 200，`Access-Control-Allow-Origin` 为 `null`。
+- 后端全量测试：`89 passed in 3.53s`

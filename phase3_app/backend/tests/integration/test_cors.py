@@ -16,3 +16,18 @@ def test_cors_allows_tauri_desktop_origin(tmp_path):
 
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == "http://tauri.localhost"
+
+
+def test_cors_allows_packaged_desktop_null_origin(tmp_path):
+    client = TestClient(create_app(data_dir=tmp_path / "data"))
+
+    response = client.options(
+        "/tasks",
+        headers={
+            "Origin": "null",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "null"
