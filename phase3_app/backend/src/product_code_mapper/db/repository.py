@@ -292,6 +292,19 @@ class TaskRepo:
             )
             self._conn.commit()
 
+    def list_action_logs(self, limit: int = 100) -> list[dict]:
+        safe_limit = max(1, min(int(limit), 500))
+        rows = self._conn.execute(
+            """
+            SELECT log_id, action_type, target_type, target_id, message, details_json, created_at
+            FROM action_logs
+            ORDER BY datetime(created_at) DESC, log_id DESC
+            LIMIT ?
+            """,
+            (safe_limit,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
 
 def create_repos(db_path: str | Path) -> tuple[SettingsRepo, TaskRepo]:
     """Create a database connection and return initialized repositories."""

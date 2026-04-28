@@ -213,5 +213,31 @@
 
 仍需后续产品化补强：
 
-- `/logs/recent` 目前仍是占位返回空数组，暂未接入真实操作日志查询；当前界面未依赖它，不阻塞主流程。
 - 配置页的默认数据目录/导出目录已经保存，但当前后端运行目录仍由启动参数决定，后续应统一成真正可配置的运行目录。
+
+## 2026-04-28 三期日志占位接口收口
+
+用户追问“为什么还有占位接口”，按开发计划继续做 3.1 验收扫雷。
+
+确认问题：
+
+- `/logs/recent` 是生产路由，但仍返回空数组。
+- `action_logs` 表和 `TaskRepo.log_action` 已经存在，任务创建、导入、导出等动作会写日志。
+- 前端当前没有调用 `/logs/recent`，所以它不影响主流程，但和“基础日志和异常提示已完成”的验收口径不一致。
+
+修复：
+
+- 增加 `TaskRepo.list_action_logs(limit=100)`，从 SQLite 读取最近操作日志。
+- `/logs/recent` 改为返回真实 `action_logs` 记录。
+
+新增回归测试：
+
+- `test_recent_logs_endpoint_returns_persisted_actions`
+
+验证：
+
+- 回归测试先失败，确认旧接口确实返回空日志。
+- 修复后单条回归测试通过。
+- 后端全量测试：`98 passed in 5.43s`。
+- 前端生产构建：`npm run build` 通过。
+- Tauri 桌面构建：`npm run build` 通过，产物仍为 `phase3_app/desktop/src-tauri/target/release/product-code-mapper.exe`。

@@ -176,6 +176,24 @@ def test_config_status_lists_completed_tasks_after_app_restart(tmp_path: Path):
     assert any(task["task_id"] == task_id and task["can_export"] for task in tasks)
 
 
+def test_recent_logs_endpoint_returns_persisted_actions(tmp_path: Path):
+    client = _client_with_fake_model(tmp_path)
+    _import_company_catalog(client)
+    task_id = _create_customer_task(client)
+
+    response = client.get("/logs/recent")
+
+    assert response.status_code == 200
+    actions = response.json()["actions"]
+    assert any(
+        action["action_type"] == "task_created"
+        and action["target_type"] == "task"
+        and action["target_id"] == task_id
+        for action in actions
+    )
+    assert all("created_at" in action for action in actions)
+
+
 def _client_with_fake_model(tmp_path: Path, data_dir: Path | None = None) -> TestClient:
     client = TestClient(create_app(data_dir=data_dir or tmp_path / "data"))
     client.app.state.task_store._model_client_factory = lambda: FakeModelClient()

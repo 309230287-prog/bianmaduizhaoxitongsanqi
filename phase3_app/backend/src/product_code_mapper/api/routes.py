@@ -94,10 +94,10 @@ def diagnostics_status(request: Request) -> dict:
 
 
 @router.get("/logs/recent")
-def logs_recent(request: Request) -> dict[str, list]:
+def logs_recent(request: Request, limit: int = 100) -> dict[str, list]:
     store = _store(request)
     if store._repo:
-        return {"actions": []}  # DB action logs query would go here
+        return {"actions": store._repo.list_action_logs(limit)}
     return {"actions": []}
 
 
