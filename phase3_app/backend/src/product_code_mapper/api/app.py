@@ -18,7 +18,13 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app = FastAPI(title="商品编码对照系统 三期")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
+        allow_origins=[
+            "http://127.0.0.1:5173",
+            "http://localhost:5173",
+            "http://tauri.localhost",
+            "https://tauri.localhost",
+            "tauri://localhost",
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

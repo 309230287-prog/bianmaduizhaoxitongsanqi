@@ -88,3 +88,23 @@
 
 - 后端全量测试：`87 passed in 3.50s`
 - 前端构建：`npm run build` 通过
+
+## 2026-04-28 桌面工作台 Failed to fetch 修复
+
+用户在 Tauri 桌面工作台初始化配置页点击操作后，右上角提示 `Failed to fetch`。
+
+根因：
+
+- 本地后端服务正常，`/health`、`/settings/model`、`/config/status` 均可从命令行访问。
+- 后端 CORS 只允许 `http://127.0.0.1:5173` 和 `http://localhost:5173`。
+- Tauri 桌面壳页面来源为 `http://tauri.localhost`，未被允许，因此桌面窗口请求被浏览器安全策略拦截。
+
+修复：
+
+- 后端 CORS 增加 Tauri 桌面来源：`http://tauri.localhost`、`https://tauri.localhost`、`tauri://localhost`。
+- 新增集成测试 `test_cors_allows_tauri_desktop_origin`。
+
+验证：
+
+- Tauri 来源预检请求返回 200，`Access-Control-Allow-Origin` 为 `http://tauri.localhost`。
+- 后端全量测试：`88 passed in 3.63s`
