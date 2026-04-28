@@ -120,6 +120,33 @@ def test_api_can_pause_and_stop_running_task(tmp_path: Path):
     assert export_response.status_code == 409
 
 
+def test_running_task_status_exposes_live_metrics(tmp_path: Path):
+    client = TestClient(create_app(data_dir=tmp_path / "data"))
+    client.app.state.task_store._model_client_factory = lambda: _SlowFakeModelClient(delay_seconds=0.08)
+
+    _import_company_catalog(client, [["P1", "海天金标生抽", "海天", "500ml", "瓶"]])
+    task_id = _create_customer_task(
+        client,
+        [["海天金标生抽", "海天", "500ml", "瓶"] for _ in range(20)],
+    )
+    _confirm_suggested_fields(client, task_id)
+
+    start_response = client.post(f"/tasks/{task_id}/start")
+    assert start_response.status_code == 200
+
+    payload = _wait_for_live_metrics(client, task_id)
+
+    assert payload["run_status"] == "running"
+    assert payload["metrics"]["total_count"] == 20
+    processed = (
+        payload["metrics"]["auto_code_count"]
+        + payload["metrics"]["manual_review_count"]
+        + payload["metrics"]["no_reliable_match_count"]
+        + payload["metrics"]["suggested_review_count"]
+    )
+    assert processed > 0
+
+
 def test_api_task_start_uses_model_round_planning(tmp_path: Path):
     client = TestClient(create_app(data_dir=tmp_path / "data"))
     model = _PlanningSpyModelClient()
@@ -214,6 +241,26 @@ def _wait_for_run_status(client: TestClient, task_id: str, expected_status: str)
     raise AssertionError(f"运行未进入 {expected_status} 状态，最后状态: {last_payload}")
 
 
+def _wait_for_live_metrics(client: TestClient, task_id: str) -> dict:
+    deadline = monotonic() + 3
+    last_payload: dict = {}
+    while monotonic() < deadline:
+        response = client.get(f"/tasks/{task_id}/status")
+        assert response.status_code == 200
+        last_payload = response.json()
+        metrics = last_payload.get("metrics") or {}
+        processed = (
+            metrics.get("auto_code_count", 0)
+            + metrics.get("manual_review_count", 0)
+            + metrics.get("no_reliable_match_count", 0)
+            + metrics.get("suggested_review_count", 0)
+        )
+        if last_payload.get("run_status") == "running" and processed > 0:
+            return last_payload
+        sleep(0.02)
+    raise AssertionError(f"运行中没有返回实时指标，最后状态: {last_payload}")
+
+
 def _confirm_suggested_fields(client: TestClient, task_id: str) -> None:
     suggestions = client.get(f"/tasks/{task_id}/fields/suggestions")
     assert suggestions.status_code == 200
@@ -230,8 +277,11 @@ def _confirm_suggested_fields(client: TestClient, task_id: str) -> None:
 
 
 class _SlowFakeModelClient(FakeModelClient):
+    def __init__(self, delay_seconds: float = 0.03):
+        self._delay_seconds = delay_seconds
+
     def compare(self, customer, candidates):
-        sleep(0.03)
+        sleep(self._delay_seconds)
         return super().compare(customer, candidates)
 
 

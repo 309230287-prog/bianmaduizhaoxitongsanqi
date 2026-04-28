@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Callable
 
 from product_code_mapper.candidates.executor import CandidateExecutor
 from product_code_mapper.domain.models import CompanyProduct, CustomerItem, MatchResult
@@ -17,6 +18,7 @@ from product_code_mapper.runs.metrics import RunMetrics
 from product_code_mapper.runs.state_machine import RunStateMachine, RunStatus
 
 MAX_TOTAL_ROUNDS = 10
+ProgressCallback = Callable[[dict[str, MatchResult], int, int], None]
 
 
 @dataclass(frozen=True)
@@ -76,6 +78,7 @@ class MatchRunEngine:
         *,
         max_rounds: int = MAX_TOTAL_ROUNDS,
         state_machine: RunStateMachine | None = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> MatchRunResult:
         """Run the full multi-round 003 flow.
 
@@ -123,6 +126,8 @@ class MatchRunEngine:
                             item, fallback_command, candidate_executor, comparator, pool, audit, round_no
                         )
                         row_results[item.row_id] = outcome.match_result
+                        if progress_callback:
+                            progress_callback(row_results, round_no, len(customer_items))
                     completed_dimensions.append(fallback_command.entry_dimension)
                 audit.add("system", "planner_fallback", f"第 {round_no} 轮模型发令失败，使用回退命令: {plan_result.error}")
                 continue
@@ -146,6 +151,8 @@ class MatchRunEngine:
 
                 outcome = _process_item(item, command, candidate_executor, comparator, pool, audit, round_no)
                 row_results[item.row_id] = outcome.match_result
+                if progress_callback:
+                    progress_callback(row_results, round_no, len(customer_items))
 
             if state_machine and state_machine.should_stop:
                 break

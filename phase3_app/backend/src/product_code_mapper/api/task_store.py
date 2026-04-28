@@ -28,6 +28,7 @@ class TaskRecord:
     customer_items: list[CustomerItem] = field(default_factory=list)
     status: str = "created"
     result: MatchRunResult | None = None
+    partial_metrics: RunMetrics | None = None
     current_run_id: str | None = None
     review_import: ReviewImportResult | None = None
     fields_confirmed: bool = False
@@ -159,6 +160,7 @@ class InMemoryTaskStore:
         state_machine = RunStateMachine()
         state_machine.on_status_change = self._status_callback(task_id, run_id)
         task.current_run_id = run_id
+        task.partial_metrics = RunMetrics(total_count=len(task.customer_items), auto_code_count=0)
         task.status = "running"
         self._state_machines[task_id] = state_machine
         if self._repo:
@@ -190,9 +192,11 @@ class InMemoryTaskStore:
                 task.customer_items,
                 self.company_products,
                 state_machine=state_machine,
+                progress_callback=self._progress_callback(task_id, run_id),
             )
             with self._lock:
                 task.result = result
+                task.partial_metrics = result.metrics
             if self._repo:
                 self._repo.update_run_metrics(run_id, task.result.metrics)
                 self._repo.insert_run_results(run_id, task.result)
@@ -302,7 +306,22 @@ class InMemoryTaskStore:
         }
         if task.result:
             payload["metrics"] = asdict(task.result.metrics)
+        elif task.partial_metrics:
+            payload["metrics"] = asdict(task.partial_metrics)
         return payload
+
+    def _progress_callback(self, task_id: str, run_id: str):
+        def callback(row_results: dict[str, MatchResult], round_no: int, total_count: int) -> None:
+            metrics = _metrics_from_results(total_count, dict(row_results), total_rounds=round_no)
+            with self._lock:
+                task = self.tasks.get(task_id)
+                if task:
+                    task.partial_metrics = metrics
+            if self._repo:
+                processed_count = len(row_results)
+                self._repo.update_run_progress(run_id, processed_count)
+
+        return callback
 
     def get_field_suggestions(self, task_id: str) -> dict:
         task = self.get_task(task_id)

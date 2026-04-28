@@ -66,3 +66,25 @@
 - 真实样本显示当前自动落码安全门偏保守，自动落码率为 0。
 - 对“海天金标生抽 1*1.9L”这类接近命中的商品，系统仍可能因为候选分、品名包含关系、规格表达差异而转人工审核。
 - 3.2 应优先优化规格归一、从商品名称中抽取品牌/品名/规格、候选排序和安全门策略。
+
+## 2026-04-28 运行看板无实时动静修复
+
+用户用真实 Excel 启动任务后，运行看板长时间显示 `running`，但自动落码、必须人工、未匹配等数字不变化。
+
+根因：
+
+- 后端原来只在整轮 `run_full` 完成后一次性写入 `task.result` 和运行指标。
+- 运行中 `/tasks/{task_id}/status` 没有 `metrics`，前端只能显示 `- 条`。
+- DeepSeek 串行调用加候选扫描耗时较长，导致用户看到的效果像卡死。
+
+修复：
+
+- `MatchRunEngine.run_full` 增加进度回调，每处理一条客户记录后回传当前 `row_results`。
+- `TaskRecord` 增加 `partial_metrics`，运行中也能通过状态接口返回指标。
+- `TaskRepo.update_run_progress` 同步更新数据库 `completed_count`。
+- 新增集成测试 `test_running_task_status_exposes_live_metrics`，覆盖运行中指标可见。
+
+验证：
+
+- 后端全量测试：`87 passed in 3.50s`
+- 前端构建：`npm run build` 通过
