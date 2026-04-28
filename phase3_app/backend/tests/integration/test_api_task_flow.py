@@ -174,6 +174,17 @@ def test_config_status_lists_tasks_after_task_created(tmp_path: Path):
     assert tasks[0]["task_status"] == "created"
 
 
+def test_multiple_excel_tasks_can_reuse_task_local_row_ids(tmp_path: Path):
+    client = TestClient(create_app(data_dir=tmp_path / "data"))
+
+    first_task_id = _create_customer_task(client, [["海天金标生抽", "海天", "500ml", "瓶"]])
+    second_task_id = _create_customer_task(client, [["李锦记生抽", "李锦记", "500ml", "瓶"]])
+
+    assert first_task_id != second_task_id
+    assert client.get(f"/tasks/{first_task_id}/status").json()["customer_count"] == 1
+    assert client.get(f"/tasks/{second_task_id}/status").json()["customer_count"] == 1
+
+
 def test_next_round_does_not_overwrite_human_confirmed_rows(tmp_path: Path):
     client = TestClient(create_app(data_dir=tmp_path / "data"))
     client.app.state.task_store._model_client_factory = lambda: FakeModelClient()

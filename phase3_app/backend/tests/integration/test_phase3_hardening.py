@@ -71,6 +71,17 @@ def test_manual_item_can_create_independent_task(tmp_path: Path):
     assert status["metrics"]["auto_code_count"] == 1
 
 
+def test_multiple_manual_tasks_can_reuse_task_local_manual_row_id(tmp_path: Path):
+    client = _client_with_fake_model(tmp_path)
+
+    first = client.post("/tasks/manual", json={"商品名称": "海天金标生抽"})
+    second = client.post("/tasks/manual", json={"商品名称": "李锦记生抽"})
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["task_id"] != second.json()["task_id"]
+
+
 def test_export_contains_candidate_detail_sheet_and_internal_link(tmp_path: Path):
     client = _client_with_fake_model(tmp_path)
     _import_company_catalog(client)
@@ -96,6 +107,20 @@ def test_export_contains_candidate_detail_sheet_and_internal_link(tmp_path: Path
     assert candidate_sheet.max_row >= 2
     candidate_row_ids = [candidate_sheet.cell(row=row, column=1).value for row in range(2, candidate_sheet.max_row + 1)]
     assert "row-2" in candidate_row_ids
+
+
+def test_invalid_customer_excel_returns_chinese_400_with_cors(tmp_path: Path):
+    client = TestClient(create_app(data_dir=tmp_path / "data"), raise_server_exceptions=False)
+
+    response = client.post(
+        "/tasks",
+        files={"file": ("坏文件.txt", b"not an excel", "text/plain")},
+        headers={"Origin": "http://tauri.localhost"},
+    )
+
+    assert response.status_code == 400
+    assert response.headers["access-control-allow-origin"] == "http://tauri.localhost"
+    assert "Excel" in response.json()["detail"]
 
 
 def test_completed_task_can_export_after_app_restart(tmp_path: Path):

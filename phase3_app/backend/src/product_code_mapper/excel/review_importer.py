@@ -10,8 +10,10 @@ From the execution plan §11A and requirements doc FR-12B:
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, BinaryIO
+from zipfile import BadZipFile
 
 from openpyxl import load_workbook
+from openpyxl.utils.exceptions import InvalidFileException
 
 from product_code_mapper.domain.models import CustomerItem
 from product_code_mapper.domain.statuses import MatchStatus
@@ -52,12 +54,16 @@ def import_reviewed_excel(
 
     Returns a ReviewImportResult with parsed rows, counts, errors, and warnings.
     """
-    wb = load_workbook(
-        workbook_path if isinstance(workbook_path, (str, Path)) else workbook_path,
-        read_only=True,
-        data_only=True,
-    )
     result = ReviewImportResult()
+    try:
+        wb = load_workbook(
+            workbook_path if isinstance(workbook_path, (str, Path)) else workbook_path,
+            read_only=True,
+            data_only=True,
+        )
+    except (BadZipFile, InvalidFileException, OSError, ValueError):
+        result.errors.append("无法读取人工审核 Excel，请确认上传的是系统导出的 .xlsx 文件")
+        return result
 
     if "对照结果总表" not in wb.sheetnames:
         result.errors.append("Excel 缺少'对照结果总表'工作表，请确认使用的是导出文件")

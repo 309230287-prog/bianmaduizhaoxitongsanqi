@@ -22,7 +22,67 @@ def connect_db(db_path: str | Path) -> Connection:
 def ensure_schema(conn: Connection) -> None:
     """Create all tables if they don't exist."""
     conn.executescript(_SCHEMA_SQL)
+    _migrate_task_rows_to_task_scoped_primary_key(conn)
     conn.commit()
+
+
+def _migrate_task_rows_to_task_scoped_primary_key(conn: Connection) -> None:
+    """Allow row ids such as row-2 to be reused in different tasks.
+
+    Early Phase 3 builds made task_row_id globally unique. In reality it is a
+    task-local row marker used in exported review sheets, so the database key
+    must include task_id.
+    """
+    pk_columns = _primary_key_columns(conn, "task_rows")
+    if pk_columns != ["task_row_id"]:
+        return
+
+    conn.execute("PRAGMA foreign_keys=OFF")
+    try:
+        conn.executescript(
+            """
+            ALTER TABLE task_rows RENAME TO task_rows_legacy_global_pk;
+
+            CREATE TABLE task_rows (
+                task_row_id TEXT NOT NULL,
+                task_id TEXT NOT NULL REFERENCES match_tasks(task_id),
+                original_row_number INTEGER NOT NULL,
+                raw_row_json TEXT NOT NULL DEFAULT '{}',
+                customer_name TEXT NOT NULL DEFAULT '',
+                customer_spec TEXT NOT NULL DEFAULT '',
+                customer_unit TEXT NOT NULL DEFAULT '',
+                customer_brand TEXT NOT NULL DEFAULT '',
+                customer_note TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (task_id, task_row_id)
+            );
+
+            INSERT INTO task_rows(
+                task_row_id, task_id, original_row_number, raw_row_json,
+                customer_name, customer_spec, customer_unit, customer_brand,
+                customer_note, created_at
+            )
+            SELECT
+                task_row_id, task_id, original_row_number, raw_row_json,
+                customer_name, customer_spec, customer_unit, customer_brand,
+                customer_note, created_at
+            FROM task_rows_legacy_global_pk;
+
+            DROP TABLE task_rows_legacy_global_pk;
+            CREATE INDEX IF NOT EXISTS idx_task_rows_task ON task_rows(task_id);
+            """
+        )
+    finally:
+        conn.execute("PRAGMA foreign_keys=ON")
+
+
+def _primary_key_columns(conn: Connection, table_name: str) -> list[str]:
+    rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return [
+        row["name"]
+        for row in sorted(rows, key=lambda item: item["pk"])
+        if row["pk"]
+    ]
 
 
 _SCHEMA_SQL = """
@@ -72,7 +132,7 @@ CREATE TABLE IF NOT EXISTS match_tasks (
 );
 
 CREATE TABLE IF NOT EXISTS task_rows (
-    task_row_id TEXT PRIMARY KEY,
+    task_row_id TEXT NOT NULL,
     task_id TEXT NOT NULL REFERENCES match_tasks(task_id),
     original_row_number INTEGER NOT NULL,
     raw_row_json TEXT NOT NULL DEFAULT '{}',
@@ -81,7 +141,8 @@ CREATE TABLE IF NOT EXISTS task_rows (
     customer_unit TEXT NOT NULL DEFAULT '',
     customer_brand TEXT NOT NULL DEFAULT '',
     customer_note TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (task_id, task_row_id)
 );
 
 CREATE TABLE IF NOT EXISTS field_mappings (

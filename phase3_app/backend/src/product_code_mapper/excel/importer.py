@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, BinaryIO
+from zipfile import BadZipFile
 
 from openpyxl import load_workbook
+from openpyxl.utils.exceptions import InvalidFileException
 
 from product_code_mapper.domain.models import CompanyProduct, CustomerItem
 
@@ -16,7 +18,7 @@ class ExcelImportError(ValueError):
 
 
 def import_customer_items(workbook_path: WorkbookSource) -> list[CustomerItem]:
-    workbook = load_workbook(_normalize_source(workbook_path), read_only=True, data_only=True)
+    workbook = _load_workbook(workbook_path)
     worksheet = workbook.active
     if worksheet is None:
         raise ExcelImportError("Excel 文件不包含任何工作表")
@@ -53,7 +55,7 @@ def import_customer_items(workbook_path: WorkbookSource) -> list[CustomerItem]:
 
 
 def import_company_products(workbook_path: WorkbookSource) -> list[CompanyProduct]:
-    workbook = load_workbook(_normalize_source(workbook_path), read_only=True, data_only=True)
+    workbook = _load_workbook(workbook_path)
     worksheet = workbook.active
     if worksheet is None:
         raise ExcelImportError("Excel 文件不包含任何工作表")
@@ -103,6 +105,13 @@ def _normalize_source(workbook_path: WorkbookSource) -> Path | BinaryIO:
     if isinstance(workbook_path, str | Path):
         return Path(workbook_path)
     return workbook_path
+
+
+def _load_workbook(workbook_path: WorkbookSource):
+    try:
+        return load_workbook(_normalize_source(workbook_path), read_only=True, data_only=True)
+    except (BadZipFile, InvalidFileException, OSError, ValueError) as exc:
+        raise ExcelImportError("无法读取 Excel 文件，请确认上传的是 .xlsx 文件") from exc
 
 
 def _first_present(fields: dict[str, str], names: list[str]) -> str:

@@ -6,7 +6,11 @@ from fastapi.responses import Response
 
 from product_code_mapper.api.settings_store import SettingsStore
 from product_code_mapper.api.task_store import InMemoryTaskStore, task_status_payload
-from product_code_mapper.excel.importer import import_company_products, import_customer_items
+from product_code_mapper.excel.importer import (
+    ExcelImportError,
+    import_company_products,
+    import_customer_items,
+)
 
 
 router = APIRouter()
@@ -163,7 +167,10 @@ def test_model_settings(request: Request) -> dict[str, str | bool]:
 
 @router.post("/catalog/company/import")
 async def import_company_catalog(request: Request, file: UploadFile) -> dict[str, int]:
-    products = import_company_products(BytesIO(await file.read()))
+    try:
+        products = import_company_products(BytesIO(await file.read()))
+    except ExcelImportError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     store = _store(request)
     return {"imported_count": store.replace_company_products(products)}
 
@@ -186,7 +193,10 @@ def current_company_catalog(request: Request) -> dict:
 
 @router.post("/tasks")
 async def create_task(request: Request, file: UploadFile) -> dict[str, str | int]:
-    customer_items = import_customer_items(BytesIO(await file.read()))
+    try:
+        customer_items = import_customer_items(BytesIO(await file.read()))
+    except ExcelImportError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     task = _store(request).create_task(customer_items)
     return {
         "task_id": task.task_id,
@@ -332,6 +342,8 @@ async def add_manual_row(request: Request, task_id: str) -> dict:
         row = _store(request).add_manual_row(task_id, payload)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return row
 
 

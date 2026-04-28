@@ -133,3 +133,43 @@
 
 - `Origin: null` 访问 `/tasks` 预检返回 200，`Access-Control-Allow-Origin` 为 `null`。
 - 后端全量测试：`89 passed in 3.53s`
+
+## 2026-04-28 新建对照任务 Failed to fetch 深挖修复
+
+用户在“新建对照任务”页面上传客户 Excel 后仍看到 `Failed to fetch`。
+
+进一步证据：
+
+- 通过 WebView2 CDP 进入真实桌面窗口，确认页面来源为 `http://tauri.localhost/`。
+- 同一窗口内 `GET /health` 和 `GET /config/status` 正常，说明后端不是整体不可达，CORS 也不是对所有请求失败。
+- 同一窗口内 `POST /tasks` 文件上传失败为 `TypeError: Failed to fetch`。
+- 后端数据库结构显示 `task_rows.task_row_id` 是全局主键，而客户行 ID 会反复生成 `row-2`、`row-3`。
+- 回归测试复现：第一次创建 Excel 任务成功，第二次创建任务触发 `UNIQUE constraint failed: task_rows.task_row_id`。
+- 手工单品任务也复现同类问题：每个独立手工任务都使用 `manual-1`，第二个任务会触发同样的唯一键冲突。
+
+根因：
+
+- `task_row_id` 的业务含义是“某个任务内部的客户行标识”，不是全系统全局唯一 ID。
+- 数据库把它建成了全局主键，导致不同任务之间复用 `row-2` 或 `manual-1` 时崩溃。
+- 崩溃是未处理 500，浏览器/WebView 无法读取异常响应，于是统一显示 `Failed to fetch`，掩盖了真实数据库错误。
+
+修复：
+
+- `task_rows` 主键改为 `(task_id, task_row_id)`，允许不同任务复用同一个行号标识。
+- 增加旧库迁移：启动时自动把旧的 `task_row_id` 全局主键迁移为任务内复合主键。
+- Excel 上传解析失败统一转成中文 400，而不是未处理 500。
+- 人工审核回导 Excel 读取失败返回校验错误，不再炸成服务端异常。
+- 手工追加商品的空商品名错误转成中文 400。
+
+新增回归测试：
+
+- 多个 Excel 任务可重复使用 `row-2`。
+- 多个独立手工任务可重复使用 `manual-1`。
+- 旧数据库结构会自动迁移到 `(task_id, task_row_id)`。
+- 坏客户 Excel 上传返回中文 400 且保留 CORS 响应。
+
+验证：
+
+- 新增回归测试先失败后通过。
+- 后端全量测试：`94 passed in 4.17s`。
+- 重启后端后，通过真实 Tauri WebView2 验证：连续两次 `POST /tasks` 有效 Excel 上传均返回 200；坏文件上传返回 400 中文错误，不再是 `Failed to fetch`。
