@@ -11,6 +11,7 @@ from product_code_mapper.model.client import FakeModelClient
 
 def test_api_runs_task_and_exports_excel(tmp_path: Path):
     client = TestClient(create_app(data_dir=tmp_path / "data"))
+    client.app.state.task_store._model_client_factory = lambda: FakeModelClient()
 
     company_response = client.post(
         "/catalog/company/import",
@@ -48,6 +49,7 @@ def test_api_runs_task_and_exports_excel(tmp_path: Path):
     task_id = task_response.json()["task_id"]
     assert task_response.json()["customer_count"] == 2
 
+    _confirm_suggested_fields(client, task_id)
     start_response = client.post(f"/tasks/{task_id}/start")
     assert start_response.status_code == 200
     assert "task_status" in start_response.json()
@@ -60,7 +62,7 @@ def test_api_runs_task_and_exports_excel(tmp_path: Path):
     assert export_response.status_code == 200
 
     workbook = load_workbook(BytesIO(export_response.content))
-    assert workbook.sheetnames == ["对照结果总表", "详细证据表", "统计汇总表"]
+    assert workbook.sheetnames == ["对照结果总表", "详细证据表", "候选明细表", "统计汇总表"]
     summary_sheet = workbook["对照结果总表"]
     headers = [cell.value for cell in summary_sheet[1]]
     product_code_column = headers.index("我司商品编码") + 1
@@ -99,6 +101,7 @@ def test_api_can_pause_and_stop_running_task(tmp_path: Path):
     )
     task_id = task_response.json()["task_id"]
 
+    _confirm_suggested_fields(client, task_id)
     start_response = client.post(f"/tasks/{task_id}/start")
     assert start_response.status_code == 200
     assert start_response.json()["run_status"] == "running"
@@ -125,6 +128,7 @@ def test_api_task_start_uses_model_round_planning(tmp_path: Path):
     _import_company_catalog(client, [["P1", "海天金标生抽", "海天", "500ml", "瓶"]])
     task_id = _create_customer_task(client, [["海天金标生抽", "海天", "500ml", "瓶"]])
 
+    _confirm_suggested_fields(client, task_id)
     client.post(f"/tasks/{task_id}/start")
     _wait_for_task_status(client, task_id, "completed")
 
@@ -145,9 +149,11 @@ def test_config_status_lists_tasks_after_task_created(tmp_path: Path):
 
 def test_next_round_does_not_overwrite_human_confirmed_rows(tmp_path: Path):
     client = TestClient(create_app(data_dir=tmp_path / "data"))
+    client.app.state.task_store._model_client_factory = lambda: FakeModelClient()
 
     _import_company_catalog(client, [["P1", "海天金标生抽", "海天", "500ml", "瓶"]])
     task_id = _create_customer_task(client, [["海天金标生抽", "海天", "500ml", "瓶"]])
+    _confirm_suggested_fields(client, task_id)
     client.post(f"/tasks/{task_id}/start")
     _wait_for_task_status(client, task_id, "completed")
 
@@ -206,6 +212,21 @@ def _wait_for_run_status(client: TestClient, task_id: str, expected_status: str)
             return last_payload
         sleep(0.02)
     raise AssertionError(f"运行未进入 {expected_status} 状态，最后状态: {last_payload}")
+
+
+def _confirm_suggested_fields(client: TestClient, task_id: str) -> None:
+    suggestions = client.get(f"/tasks/{task_id}/fields/suggestions")
+    assert suggestions.status_code == 200
+    payload = suggestions.json()
+    response = client.post(
+        f"/tasks/{task_id}/fields/confirm",
+        json={
+            "customer_mappings": payload["customer_mappings"],
+            "company_mappings": payload["company_mappings"],
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["confirmed"] is True
 
 
 class _SlowFakeModelClient(FakeModelClient):

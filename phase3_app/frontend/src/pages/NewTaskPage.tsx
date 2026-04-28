@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createTask, addManualRow, errorMessage } from "../api/client";
+import { createTask, createManualTask, addManualRow, errorMessage } from "../api/client";
 
 export function NewTaskPage() {
   const nav = useNavigate();
@@ -23,7 +23,8 @@ export function NewTaskPage() {
     try {
       const r = await createTask(customerFile);
       setTaskId(r.task_id);
-      setNotice({ tone: "good", message: `任务已创建：${r.customer_count} 条。点击"开始对照"进入运行看板。` });
+      setNotice({ tone: "good", message: `任务已创建：${r.customer_count} 条。下一步确认字段。` });
+      nav(`/tasks/${r.task_id}/fields`);
     } catch (e) {
       setNotice({ tone: "warn", message: errorMessage(e) });
     } finally { setBusy(false); }
@@ -36,12 +37,16 @@ export function NewTaskPage() {
       // Create task first if needed, or reuse existing
       let tid = taskId;
       if (!tid) {
-        // Create a minimal task with an empty workbook
-        const blob = new Blob([], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-        // For simplicity, we require at least one file upload task exists, or we create one
-        // Actually, we need a different approach - let's use a quick hack: create task from a tiny xlsx
-        // For now, just show a message
-        setNotice({ tone: "warn", message: "请先上传客户 Excel 创建任务，再添加手工商品。" });
+        const created = await createManualTask({
+          "商品名称": manualName,
+          "规格": manualSpec,
+          "单位": manualUnit,
+          "品牌": manualBrand,
+          "备注": manualNote,
+        });
+        setTaskId(created.task_id);
+        setNotice({ tone: "good", message: `手工任务已创建：${manualName}。下一步确认字段。` });
+        nav(`/tasks/${created.task_id}/fields`);
         return;
       }
       await addManualRow(tid, {
@@ -57,7 +62,7 @@ export function NewTaskPage() {
 
   function handleStart() {
     if (!taskId) { setNotice({ tone: "warn", message: "请先创建任务。" }); return; }
-    nav(`/runs/${taskId}`);
+    nav(`/tasks/${taskId}/fields`);
   }
 
   return (
@@ -94,13 +99,13 @@ export function NewTaskPage() {
         </article>
 
         <article className="panel">
-          <div className="panel-heading"><span>03</span><div><h2>开始对照</h2><p>确认字段后点击按钮进入运行看板</p></div></div>
+          <div className="panel-heading"><span>03</span><div><h2>字段确认</h2><p>开始对照前必须确认字段含义</p></div></div>
           <div className="metrics">
             <div className="metric"><span>任务状态</span><strong>{taskId ? "已创建" : "未创建"}</strong></div>
             <div className="metric"><span>任务ID</span><strong>{taskId ? taskId.slice(0, 12) + "..." : "-"}</strong></div>
           </div>
           <div className="actions">
-            <button onClick={handleStart} disabled={!taskId}>开始第一轮对照</button>
+            <button onClick={handleStart} disabled={!taskId}>进入字段确认</button>
           </div>
         </article>
       </section>

@@ -72,7 +72,11 @@ class CandidateComparator:
                     reason_summary=f"模型比较失败，使用本地安全门判断: {exc}",
                     evidence_summary=f"模型调用异常: {exc}",
                     risk_summary="模型比较未完成" + ("、".join(gate_decision.block_reasons) or ""),
-                    audit={"model_error": str(exc), "gate_decision": gate_decision},
+                    audit={
+                        "model_error": str(exc),
+                        "gate_decision": gate_decision,
+                        "candidate_summaries": _candidate_summaries(candidates),
+                    },
                 ),
                 used_model=True,
                 error=str(exc),
@@ -99,6 +103,7 @@ class CandidateComparator:
                         "model_status": cr.status,
                         "matched_signals": cr.matched_signals,
                         "conflict_signals": cr.conflict_signals,
+                        "candidate_summaries": _candidate_summaries(candidates),
                     },
                 ),
                 model_compare_result=cr,
@@ -142,8 +147,27 @@ class CandidateComparator:
                     "conflict_signals": cr.conflict_signals,
                     "gate_block_reasons": gate_decision.block_reasons,
                     "gate_can_auto_code": gate_decision.can_auto_code,
+                    "candidate_summaries": _candidate_summaries(candidates),
                 },
             ),
             model_compare_result=cr,
             used_model=True,
         )
+
+
+def _candidate_summaries(candidates: list[Candidate]) -> list[dict[str, Any]]:
+    summaries: list[dict[str, Any]] = []
+    for index, candidate in enumerate(candidates, start=1):
+        product = candidate.product
+        summaries.append({
+            "rank": index,
+            "code": product.code,
+            "name": product.name,
+            "brand": product.brand,
+            "spec": product.spec,
+            "unit": product.unit,
+            "package": product.package,
+            "score": candidate.score,
+            "matched_terms": candidate.matched_terms,
+        })
+    return summaries

@@ -47,7 +47,7 @@ def test_export_keeps_customer_columns_and_appends_result_columns(tmp_path: Path
     export_run_result(result, output_path)
 
     workbook = load_workbook(output_path)
-    assert workbook.sheetnames == ["对照结果总表", "详细证据表", "统计汇总表"]
+    assert workbook.sheetnames == ["对照结果总表", "详细证据表", "候选明细表", "统计汇总表"]
 
     summary_sheet = workbook["对照结果总表"]
     headers = [cell.value for cell in summary_sheet[1]]

@@ -15,6 +15,7 @@ export type TaskStatus = {
   run_status: string;
   can_export: boolean;
   customer_count: number;
+  fields_confirmed?: boolean;
   metrics?: {
     total_count: number;
     auto_code_count: number;
@@ -94,6 +95,14 @@ export async function createTask(file: File): Promise<{ task_id: string; status:
   return requestJson("/tasks", { method: "POST", body: formData });
 }
 
+export async function createManualTask(fields: Record<string, string>): Promise<{ task_id: string; status: string; customer_count: number }> {
+  return requestJson("/tasks/manual", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fields),
+  });
+}
+
 export async function getTask(taskId: string): Promise<TaskStatus> {
   return requestJson(`/tasks/${taskId}/status`);
 }
@@ -130,6 +139,27 @@ export async function confirmFields(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ customer_mappings: customerMappings, company_mappings: companyMappings }),
   });
+}
+
+export type FieldMapping = {
+  business_field: string;
+  column_name: string;
+  column_index: number;
+  importance_level: string;
+  confirmed_by_user?: boolean;
+};
+
+export type FieldSuggestions = {
+  task_id: string;
+  customer_mappings: FieldMapping[];
+  company_mappings: FieldMapping[];
+  missing_required: string[];
+  fields_confirmed: boolean;
+  can_start: boolean;
+};
+
+export async function getFieldSuggestions(taskId: string): Promise<FieldSuggestions> {
+  return requestJson(`/tasks/${taskId}/fields/suggestions`);
 }
 
 export async function getFieldMappings(taskId: string) {

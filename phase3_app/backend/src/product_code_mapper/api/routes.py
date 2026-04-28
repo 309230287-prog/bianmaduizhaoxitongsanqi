@@ -195,6 +195,19 @@ async def create_task(request: Request, file: UploadFile) -> dict[str, str | int
     }
 
 
+@router.post("/tasks/manual")
+async def create_manual_task(request: Request) -> dict[str, str | int]:
+    try:
+        task = _store(request).create_manual_task(await request.json())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "task_id": task.task_id,
+        "status": task.status,
+        "customer_count": len(task.customer_items),
+    }
+
+
 @router.get("/tasks/{task_id}")
 def get_task(request: Request, task_id: str) -> dict:
     try:
@@ -218,6 +231,8 @@ def start_task(request: Request, task_id: str) -> dict:
         _store(request).start_task(task_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return _store(request).get_task_run_status(task_id)
 
 
@@ -287,6 +302,14 @@ async def confirm_task_fields(request: Request, task_id: str) -> dict:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return result
+
+
+@router.get("/tasks/{task_id}/fields/suggestions")
+def get_task_field_suggestions(request: Request, task_id: str) -> dict:
+    try:
+        return _store(request).get_field_suggestions(task_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/tasks/{task_id}/fields")
