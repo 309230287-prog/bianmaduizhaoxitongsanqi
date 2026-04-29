@@ -10,11 +10,11 @@ $workbenchUrl = "http://127.0.0.1:5173"
 $backendHealthUrl = "http://127.0.0.1:8000/health"
 
 if (-not (Test-Path -LiteralPath $backendDir)) {
-    throw "未找到后端目录：$backendDir"
+    throw "Backend directory not found: $backendDir"
 }
 
 if (-not (Test-Path -LiteralPath $frontendDir)) {
-    throw "未找到前端目录：$frontendDir"
+    throw "Frontend directory not found: $frontendDir"
 }
 
 $backendCommand = @"
@@ -45,7 +45,7 @@ for ($i = 0; $i -lt 30; $i++) {
 }
 
 if (-not $backendReady) {
-    Write-Warning "后端服务暂未响应，调试页面可能需要稍等几秒。"
+    Write-Warning "Backend is not ready yet. The debug page may need a few seconds."
 }
 
 if (-not (Test-Path -LiteralPath (Join-Path $frontendDir "node_modules"))) {
@@ -62,6 +62,6 @@ Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoExit", "-Command"
 Start-Sleep -Seconds 4
 Start-Process $workbenchUrl
 
-Write-Host "开发调试模式已启动。"
-Write-Host "前端调试页面：$workbenchUrl"
-Write-Host "后端服务：http://127.0.0.1:8000"
+Write-Host "Development debug mode started."
+Write-Host "Frontend debug page: $workbenchUrl"
+Write-Host "Backend service: http://127.0.0.1:8000"

@@ -20,7 +20,7 @@ def test_start_workbench_prefers_desktop_owned_backend():
     script = PROJECT_ROOT / "scripts" / "start_workbench.ps1"
 
     content = script.read_text(encoding="utf-8")
-    assert "桌面程序会自动连接本地后端" in content
+    assert "desktop client started" in content
     assert "uvicorn product_code_mapper.api.app:create_app" not in content
 
 
@@ -31,6 +31,7 @@ def test_chinese_double_click_launcher_uses_start_script():
     content = launcher.read_text(encoding="utf-8")
     assert "start_workbench.ps1" in content
     assert "ExecutionPolicy Bypass" in content
+    assert "pause" in content
 
 
 def test_dev_debug_script_keeps_web_debug_workflow():
@@ -52,3 +53,14 @@ def test_chinese_dev_debug_launcher_uses_debug_script():
     content = launcher.read_text(encoding="utf-8")
     assert "start_dev_debug.ps1" in content
     assert "ExecutionPolicy Bypass" in content
+    assert "pause" in content
+
+
+def test_powershell_scripts_are_ascii_for_windows_powershell_compatibility():
+    scripts = [
+        PROJECT_ROOT / "scripts" / "start_workbench.ps1",
+        PROJECT_ROOT / "scripts" / "start_dev_debug.ps1",
+    ]
+
+    for script in scripts:
+        script.read_text(encoding="ascii")

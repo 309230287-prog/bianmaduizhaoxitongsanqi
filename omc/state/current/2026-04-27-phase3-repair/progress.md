@@ -380,3 +380,34 @@
 
 - 先新增测试，确认开发调试入口缺失时失败。
 - 补齐脚本后，`tests/integration/test_start_scripts.py` 通过，5 个启动脚本检查全部通过。
+
+## 2026-04-29 修复 bat 双击一闪而过
+
+用户反馈：
+
+- `启动三期工作台.bat` 和 `开发调试启动.bat` 双击后一闪而过。
+
+根因确认：
+
+- 使用 `cmd /c` 真实运行两个 bat 后复现失败。
+- bat 调用的是 Windows 自带 `powershell.exe`。
+- `.ps1` 文件为 UTF-8 无 BOM，包含中文字符串。
+- Windows PowerShell 5.1 按系统 ANSI/GBK 读取脚本，导致中文字符串乱码，并引发解析错误，例如 `&&` 被误认为语法符号、大括号被误判缺失。
+
+本轮修复：
+
+- 两个 PowerShell 脚本改为 ASCII 文本，避免 Windows PowerShell 编码误读。
+- 四个 bat 入口增加 `-NoProfile`。
+- 四个 bat 入口增加 `if errorlevel 1 pause`，出错时窗口停住，不再一闪而过。
+- 启动脚本测试增加 ASCII 兼容性检查。
+
+验证：
+
+- `tests/integration/test_start_scripts.py`：6 个脚本检查通过。
+- Windows PowerShell Parser API 检查 `start_workbench.ps1` 通过。
+- Windows PowerShell Parser API 检查 `start_dev_debug.ps1` 通过。
+- `cmd /c "D:\bianmaduizhaoxiangmu\sanqi_publish_clean\启动三期工作台.bat"` 返回 0，并输出 `Phase 3 desktop client started...`。
+- `cmd /c "D:\bianmaduizhaoxiangmu\sanqi_publish_clean\开发调试启动.bat"` 返回 0，并输出开发调试地址和后端地址。
+- 后端全量测试：`104 passed in 4.88s`。
+- 前端构建：`npm run build` 通过。
+- Tauri 桌面构建：首次因刚验证启动的 `product-code-mapper.exe` 正在运行而无法覆盖；关闭该进程后重跑 `npm run build` 通过。
