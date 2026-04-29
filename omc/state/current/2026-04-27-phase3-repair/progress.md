@@ -277,3 +277,33 @@
 - 当前真实任务 `341d351c2d5a4e11aaebcca66a5bf6b1` 状态接口已返回 `can_export=true`。
 - 当前真实任务导出接口返回 200，并生成 Excel：`runtime_data/debug/task-341d351c-export-check.xlsx`。
 - 导出 Excel 验证：包含 `对照结果总表`、`详细证据表`、`候选明细表`、`统计汇总表`；总表 313 行，候选明细表 6241 行。
+
+## 2026-04-29 看板进度和桌面交付边界修订
+
+用户补充三条要求：
+
+1. 进度条必须显示百分比。
+2. 前端和后端必须真正连成桌面版，不要再停留在 Web/脚本启动体验。
+3. 中断之后也要允许下载，哪怕是不完整的当前结果。
+
+本轮完成：
+
+- 运行看板增加 `处理进度：xx%` 和 `已处理 / 总数`。
+- 将“总轮次”改为“系统内部匹配轮次”，避免和人工第二轮混淆。
+- 将右侧“第二轮”改为“人工复核后 / 开始下一轮对照”，明确只有上传人工加工 Excel 后才进入业务第 2 轮。
+- 停止后如已有结果，导出按钮显示为“导出当前结果 Excel”，并提示“文件可能不是完整最终结果”。
+- 抽出 `runBoardProgress` 进度计算函数，并增加前端检查文件。
+
+仍未完成，进入下一阶段：
+
+- Python 后端作为 Tauri sidecar 内置到桌面程序。
+- Windows 安装包。
+- 安装后开始菜单入口、桌面快捷方式和卸载验证。
+
+验证：
+
+- 前端进度计算检查：`npx tsc src/pages/runBoardProgress.test.ts ...` 后执行 `node runtime_data/frontend-tests/runBoardProgress.test.js`，通过。
+- 前端构建：`npm run build` 通过。
+- 后端全量测试：`99 passed in 5.21s`。
+- 当前真实任务 `341d351c2d5a4e11aaebcca66a5bf6b1` 状态接口返回 `can_export=true`。
+- Tauri 桌面构建：`npm run build` 通过，产物仍为 `phase3_app/desktop/src-tauri/target/release/product-code-mapper.exe`。

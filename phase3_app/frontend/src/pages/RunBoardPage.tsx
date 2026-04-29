@@ -5,6 +5,7 @@ import {
   exportTaskUrl, startNextRound, previewNextRound,
   errorMessage, type TaskStatus,
 } from "../api/client";
+import { processedCount, progressPercent } from "./runBoardProgress";
 
 export function RunBoardPage() {
   const { taskId } = useParams<{ taskId: string }>();
@@ -78,8 +79,10 @@ export function RunBoardPage() {
   const isRunning = status?.run_status === "running";
   const isPaused = status?.run_status === "paused";
   const isCompleted = status?.run_status === "completed";
+  const isStopped = status?.run_status === "stopped";
   const canExport = status?.can_export ?? false;
-  const progress = m ? Math.round((m.auto_code_count + m.manual_review_count + m.no_reliable_match_count + m.suggested_review_count) / Math.max(m.total_count, 1) * 100) : 0;
+  const processed = processedCount(m);
+  const progress = progressPercent(m);
 
   return (
     <>
@@ -104,21 +107,26 @@ export function RunBoardPage() {
             <div className="metric"><span>必须人工</span><strong>{m?.manual_review_count ?? "-"} 条</strong></div>
             <div className="metric"><span>未匹配</span><strong>{m?.no_reliable_match_count ?? "-"} 条</strong></div>
             <div className="metric"><span>回大自然池</span><strong>{m?.returned_to_nature_count ?? "-"} 条</strong></div>
-            <div className="metric"><span>总轮次</span><strong>{m?.total_rounds ?? "-"}</strong></div>
+            <div className="metric"><span>系统内部匹配轮次</span><strong>{m?.total_rounds ?? "-"}</strong></div>
           </div>
-          <div className="progress"><span style={{ width: `${Math.min(progress, 100)}%` }} /></div>
+          <div className="progress-summary">
+            <span>处理进度：{progress}%</span>
+            <strong>{processed} / {m?.total_count ?? status?.customer_count ?? 0} 条</strong>
+          </div>
+          <div className="progress" aria-label={`处理进度 ${progress}%`}><span style={{ width: `${progress}%` }} /></div>
+          {isStopped && canExport && <p className="inline-hint">任务已中断，可导出当前结果 Excel；文件可能不是完整最终结果。</p>}
           <div className="actions">
             {isRunning && <button className="secondary" onClick={handlePause} disabled={busy}>暂停</button>}
             {isPaused && <button onClick={handleResume} disabled={busy}>继续</button>}
             {(isRunning || isPaused) && <button className="secondary" onClick={handleStop} disabled={busy}>停止</button>}
             <a className={`button-link ${canExport ? "" : "disabled"}`} href={canExport ? exportTaskUrl(taskId!) : undefined}>
-              导出 Excel
+              {isStopped ? "导出当前结果 Excel" : "导出 Excel"}
             </a>
           </div>
         </article>
 
         <article className="panel">
-          <div className="panel-heading"><span>第二轮</span><div><h2>下一轮对照</h2><p>上传人工加工后的 Excel 继续</p></div></div>
+          <div className="panel-heading"><span>人工复核后</span><div><h2>开始下一轮对照</h2><p>上传人工加工后的 Excel 后，才会进入业务第 2 轮</p></div></div>
           <div className="dropzone" onClick={() => document.getElementById("review-file")?.click()}>
             <span>选择人工加工后的 Excel</span>
             <strong>支持 .xlsx 文件</strong>
