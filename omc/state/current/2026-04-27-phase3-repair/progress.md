@@ -307,3 +307,33 @@
 - 后端全量测试：`99 passed in 5.21s`。
 - 当前真实任务 `341d351c2d5a4e11aaebcca66a5bf6b1` 状态接口返回 `can_export=true`。
 - Tauri 桌面构建：`npm run build` 通过，产物仍为 `phase3_app/desktop/src-tauri/target/release/product-code-mapper.exe`。
+
+## 2026-04-29 桌面壳自动拉起后端
+
+根因确认：
+
+- `phase3_app/desktop/src-tauri/src/main.rs` 原本只有 `tauri::Builder::default().run(...)`。
+- 这意味着桌面端只负责开窗口，不负责启动 Python 后端。
+- 因此前端和后端没有真正由桌面壳打通，仍依赖外部脚本或已有 8000 服务。
+
+本轮完成：
+
+- 桌面入口增加 `start_backend_if_needed`。
+- 启动桌面程序时先检测 `127.0.0.1:8000` 是否已有后端。
+- 如没有后端，则自动定位项目内 `phase3_app/backend`，设置 `PYTHONPATH`，启动 `uvicorn product_code_mapper.api.app:create_app --factory`。
+- 等待本地 8000 端口可用后再继续打开桌面窗口。
+- 后端子进程由桌面进程托管，桌面进程退出时尝试关闭子进程。
+
+边界说明：
+
+- 当前已实现“项目目录内的桌面 exe 自动拉起后端”。
+- Windows 安装包和真正分发形态仍需下一阶段完成：需要把 Python 后端、依赖和运行时一起纳入安装包或 sidecar 方案。
+
+验证：
+
+- 新增桌面桥接护栏测试：`tests/integration/test_desktop_backend_bridge.py`。
+- 红灯：测试确认旧 `main.rs` 不包含后端启动逻辑，失败。
+- 绿灯：补齐桌面入口后该测试通过。
+- 后端全量测试：`100 passed in 5.83s`。
+- 前端构建：`npm run build` 通过。
+- Tauri 桌面构建：`npm run build` 通过，产物为 `phase3_app/desktop/src-tauri/target/release/product-code-mapper.exe`。
