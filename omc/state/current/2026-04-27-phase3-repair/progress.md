@@ -241,3 +241,39 @@
 - 后端全量测试：`98 passed in 5.43s`。
 - 前端生产构建：`npm run build` 通过。
 - Tauri 桌面构建：`npm run build` 通过，产物仍为 `phase3_app/desktop/src-tauri/target/release/product-code-mapper.exe`。
+
+## 2026-04-29 停止状态导出问题修复
+
+用户真实运行 312 条样本时发现：进度条已满、任务进入 `stopped`，但“导出 Excel”按钮仍不可用。
+
+根因证据：
+
+- 后端状态接口返回：`task_status=stopped`、`can_export=false`。
+- 数据库 `task_runs` 显示同一任务 `total_count=312`、`completed_count=312`。
+- 数据库 `run_results` 已有 312 条结果。
+- 导出接口旧逻辑按状态机 `stopped` 一刀切禁止导出，返回 409。
+
+判断：
+
+- 这不是“没有结果不能导出”。
+- 这是停止状态、结束条件和导出条件之间打架。
+- 业务上只要已经生成可复核结果，就应允许导出 Excel，尤其要支持用户停止后检查当前结果。
+
+修复：
+
+- 导出权限从“必须 completed”调整为“不是 failed 且已有结果”。
+- 重启恢复时允许加载 stopped 但已有结果的最新运行结果。
+- 保留 running/paused 且尚无结果时禁止导出。
+
+新增回归测试：
+
+- `test_stopped_after_all_rows_processed_can_still_export_excel`
+- 同步调整 `test_api_can_pause_and_stop_running_task`，停止后已有结果应可导出。
+
+验证：
+
+- 两条关键回归测试通过。
+- 后端全量测试：`99 passed in 4.98s`。
+- 当前真实任务 `341d351c2d5a4e11aaebcca66a5bf6b1` 状态接口已返回 `can_export=true`。
+- 当前真实任务导出接口返回 200，并生成 Excel：`runtime_data/debug/task-341d351c-export-check.xlsx`。
+- 导出 Excel 验证：包含 `对照结果总表`、`详细证据表`、`候选明细表`、`统计汇总表`；总表 313 行，候选明细表 6241 行。

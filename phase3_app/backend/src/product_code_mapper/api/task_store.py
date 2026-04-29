@@ -264,7 +264,7 @@ class InMemoryTaskStore:
                         status=task_data["status"],
                         fields_confirmed=self._has_confirmed_field_mappings(task_id),
                     )
-                    task.result = self._load_latest_completed_result(task_id, items)
+                    task.result = self._load_latest_exportable_result(task_id, items)
                     self.tasks[task_id] = task
                     return task
             raise KeyError(f"任务不存在: {task_id}") from exc
@@ -297,7 +297,7 @@ class InMemoryTaskStore:
         sm = self._state_machines.get(task_id)
         task = self.get_task(task_id)
         run_status = sm.status.value if sm else task.status
-        can_export = sm.can_export if sm else task.status == "completed" and task.result is not None
+        can_export = task.status != "failed" and task.result is not None
         payload: dict = {
             "task_id": task_id,
             "task_status": task.status,
@@ -320,14 +320,14 @@ class InMemoryTaskStore:
                 summaries[task_id] = {
                     "task_id": task_id,
                     "task_status": row["status"],
-                    "can_export": row["status"] == "completed" and bool(row["has_completed_results"]),
+                "can_export": bool(row["has_completed_results"]) and row["status"] != "failed",
                     "customer_count": row["customer_count"],
                 }
         for task_id, task in self.tasks.items():
             summaries[task_id] = {
                 "task_id": task_id,
                 "task_status": task.status,
-                "can_export": task.status == "completed" and task.result is not None,
+                "can_export": task.status != "failed" and task.result is not None,
                 "customer_count": len(task.customer_items),
             }
         return list(summaries.values())
@@ -489,9 +489,9 @@ class InMemoryTaskStore:
 
     def export_task(self, task_id: str) -> bytes:
         sm = self._state_machines.get(task_id)
-        if sm and not sm.can_export:
-            raise RuntimeError("本轮尚未完成，不能导出正式 Excel")
         task = self.get_task(task_id)
+        if sm and not sm.can_export and task.result is None:
+            raise RuntimeError("本轮尚未完成，不能导出正式 Excel")
         if task.result is None:
             raise RuntimeError("任务尚未完成，不能导出")
 
@@ -527,7 +527,7 @@ class InMemoryTaskStore:
         }
         return "商品名称" in customer_fields and {"商品编码", "商品名称"}.issubset(company_fields)
 
-    def _load_latest_completed_result(
+    def _load_latest_exportable_result(
         self,
         task_id: str,
         customer_items: list[CustomerItem],
@@ -535,7 +535,7 @@ class InMemoryTaskStore:
         if self._repo is None:
             return None
         latest_run = self._repo.get_latest_run(task_id)
-        if not latest_run or latest_run["status"] != "completed":
+        if not latest_run or latest_run["status"] == "failed":
             return None
         rows = self._repo.get_run_results(latest_run["run_id"])
         if not rows:

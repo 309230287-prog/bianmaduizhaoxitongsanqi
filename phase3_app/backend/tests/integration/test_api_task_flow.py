@@ -1,5 +1,6 @@
 from io import BytesIO
 from pathlib import Path
+from threading import Event
 from time import monotonic, sleep
 
 from fastapi.testclient import TestClient
@@ -114,10 +115,50 @@ def test_api_can_pause_and_stop_running_task(tmp_path: Path):
     stop_response = client.post(f"/tasks/{task_id}/stop")
     assert stop_response.status_code == 200
     stopped_payload = _wait_for_task_status(client, task_id, "stopped")
-    assert stopped_payload["can_export"] is False
+    assert stopped_payload["can_export"] is True
 
     export_response = client.get(f"/tasks/{task_id}/export")
-    assert export_response.status_code == 409
+    assert export_response.status_code == 200
+
+
+def test_stopped_after_all_rows_processed_can_still_export_excel(tmp_path: Path):
+    data_dir = tmp_path / "data"
+    client = TestClient(create_app(data_dir=data_dir))
+    model = _BlockOnNthCompareFakeModelClient(block_on_call=2)
+    client.app.state.task_store._model_client_factory = lambda: model
+
+    _import_company_catalog(client, [["P1", "海天金标生抽", "海天", "500ml", "瓶"]])
+    task_id = _create_customer_task(
+        client,
+        [
+            ["海天金标生抽", "海天", "500ml", "瓶"],
+            ["海天金标生抽", "海天", "500ml", "瓶"],
+        ],
+    )
+    _confirm_suggested_fields(client, task_id)
+
+    start_response = client.post(f"/tasks/{task_id}/start")
+    assert start_response.status_code == 200
+    assert model.block_reached.wait(timeout=5)
+
+    stop_response = client.post(f"/tasks/{task_id}/stop")
+    assert stop_response.status_code == 200
+    model.release_block.set()
+    stopped_payload = _wait_for_task_status(client, task_id, "stopped")
+
+    assert stopped_payload["metrics"]["total_count"] == 2
+    assert stopped_payload["can_export"] is True
+    export_response = client.get(f"/tasks/{task_id}/export")
+    assert export_response.status_code == 200
+    workbook = load_workbook(BytesIO(export_response.content))
+    assert "对照结果总表" in workbook.sheetnames
+
+    restarted = TestClient(create_app(data_dir=data_dir))
+    restarted_status = restarted.get(f"/tasks/{task_id}/status")
+    restarted_export = restarted.get(f"/tasks/{task_id}/export")
+    assert restarted_status.status_code == 200
+    assert restarted_status.json()["can_export"] is True
+    assert restarted_export.status_code == 200
 
 
 def test_running_task_status_exposes_live_metrics(tmp_path: Path):
@@ -293,6 +334,21 @@ class _SlowFakeModelClient(FakeModelClient):
 
     def compare(self, customer, candidates):
         sleep(self._delay_seconds)
+        return super().compare(customer, candidates)
+
+
+class _BlockOnNthCompareFakeModelClient(FakeModelClient):
+    def __init__(self, block_on_call: int):
+        self._block_on_call = block_on_call
+        self._call_count = 0
+        self.block_reached = Event()
+        self.release_block = Event()
+
+    def compare(self, customer, candidates):
+        self._call_count += 1
+        if self._call_count == self._block_on_call:
+            self.block_reached.set()
+            assert self.release_block.wait(timeout=5)
         return super().compare(customer, candidates)
 
 
