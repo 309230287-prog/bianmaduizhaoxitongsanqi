@@ -337,3 +337,46 @@
 - 后端全量测试：`100 passed in 5.83s`。
 - 前端构建：`npm run build` 通过。
 - Tauri 桌面构建：`npm run build` 通过，产物为 `phase3_app/desktop/src-tauri/target/release/product-code-mapper.exe`。
+
+## 2026-04-29 用户入口收口为桌面客户端
+
+用户明确目标：
+
+- 使用体验要像 Codex：打开桌面客户端，就在客户端窗口里运行。
+- 不要从用户入口打开浏览器页面。
+
+本轮调整：
+
+- `phase3_app/scripts/start_workbench.ps1` 改为纯桌面入口。
+- 找到 `product-code-mapper.exe` 时，只启动桌面客户端。
+- 找不到桌面客户端时，只提示先构建桌面客户端，不再启动浏览器开发模式。
+- 后端启动职责继续放在 Tauri 桌面壳 `main.rs`。
+
+仍未处理：
+
+- 端口仍暂时保留 `127.0.0.1:8000`，按用户要求稍后再处理。
+
+验证：
+
+- 启动脚本回归测试先失败，证明旧脚本仍包含浏览器/后端开发模式。
+- 删除用户入口中的浏览器/脚本后端兜底后，`tests/integration/test_start_scripts.py` 通过。
+
+## 2026-04-29 用户入口和开发调试入口分离
+
+用户确认目标：
+
+- 日常使用入口要像 Codex 一样，只打开桌面客户端。
+- Debug 能力不能丢，后期仍需要能单独启动前端、后端、浏览器调试。
+
+本轮完成：
+
+- `启动三期工作台.bat` 继续作为用户入口，只打开 Tauri 桌面客户端。
+- `phase3_app/scripts/start_workbench.ps1` 不再启动浏览器、不再启动前端 dev server、不再直接启动 uvicorn。
+- 新增 `开发调试启动.bat`。
+- 新增 `phase3_app/scripts/开发调试启动.bat`。
+- 新增 `phase3_app/scripts/start_dev_debug.ps1`，保留开发调试链路：启动后端、启动前端 dev server、打开 `http://127.0.0.1:5173`。
+
+验证：
+
+- 先新增测试，确认开发调试入口缺失时失败。
+- 补齐脚本后，`tests/integration/test_start_scripts.py` 通过，5 个启动脚本检查全部通过。
